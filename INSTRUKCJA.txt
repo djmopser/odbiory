@@ -1,0 +1,43 @@
+ODBIORY NA PLANIE – wersja offline na iPada Pro 11
+
+1) Postawienie aplikacji (jednorazowo, z internetem, na komputerze)
+   GitHub Pages (darmowe):
+   - Zaloguj się na github.com → New repository (np. "odbiory"), Public.
+   - "uploading an existing file": przeciągnij CAŁĄ zawartość tego folderu
+     (index.html, sw.js, manifest.webmanifest oraz foldery lib, fonts, icons). Commit changes.
+   - Settings → Pages → Source: "Deploy from a branch", Branch: main, folder: / (root) → Save.
+   - Po minucie dostajesz adres https://TWOJ-LOGIN.github.io/odbiory/
+   NIE wgrywaj do repozytorium pakietu startowego ani żadnych planów. Na GitHub trafia tylko program.
+
+2) Instalacja na iPadzie (raz, z internetem)
+   - Safari → otwórz adres → Udostępnij → "Dodaj do ekranu początkowego".
+   - Uruchamiaj zawsze z ikony. Od tej pory działa bez sieci.
+   - ⋯ → "Synchronizacja i kopia zapasowa" → "Zabezpiecz dane przed wyczyszczeniem".
+
+3) Pierwsze dane
+   - ⋯ → Synchronizacja → "Wczytaj plik…" → odbiory_pakiet_startowy.zip
+     (22 plany budynków 1, 2, 7, układ pięter, symbole gniazd, dotychczasowe znaczniki).
+   - Nowe plany: ⋯ → "Wgraj PDF dla tego planu" (pliki z aplikacji Pliki).
+
+4) Zdjęcia
+   - Ikona aparatu u góry: zakładki Pomieszczenia (wg numeru/nazwy), Uwagi, Inne.
+   - ZIP ma foldery: Budynek X / Pomieszczenia | Uwagi | Inne / piętro / …
+
+5) Synchronizacja z Claude
+   - iPad: ⋯ → Synchronizacja → "Synchronizuj z Claude (plik zmian)" → zapisz w iCloud Drive, folder "Odbiory".
+   - Wersja Claude: ⋯ → "Wczytaj zmiany z iPada (plik)" → wskaż plik. (Tam działa też "Analizuj".)
+   - W drugą stronę: w wersji Claude ⋯ → "Pobierz paczkę dla iPada", na iPadzie "Wczytaj plik…".
+   - Przy tym samym znaczniku zmienionym w obu miejscach wygrywa nowszy zapis.
+
+6) Dokumenty szyfrowane (sejf)
+   - ⋯ → "Dokumenty (szyfrowane, tylko offline)". Hasło min. 10 znaków. HASŁA NIE DA SIĘ ODZYSKAĆ.
+   - Pliki, nazwy i znaczniki są szyfrowane AES-256-GCM, klucz z hasła (PBKDF2, 600 000 iteracji).
+   - Sejf nigdy nie wchodzi do synchronizacji ani do kopii zapasowych – dokumenty są tylko na tym iPadzie.
+   - Blokuje się sam po 10 min bezczynności albo po 2 min w tle.
+
+7) Kopia zapasowa
+   - ⋯ → Synchronizacja → "Pełna kopia zapasowa" → zapisz do iCloud Drive. Raz w tygodniu.
+   - Nie czyść danych Safari i nie usuwaj ikony aplikacji bez kopii.
+
+8) Aktualizacja programu
+   Wgraj nowe pliki do repozytorium. Aplikacja pobierze je przy następnym uruchomieniu z internetem.
