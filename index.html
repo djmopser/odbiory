@@ -1615,7 +1615,9 @@ if(!BUILDINGS.includes(S.b))S.b="1";if(!LAYERS[S.l])S.l="el";
 S.f=floorsOf(S.b)[0].id;renderAll();
 (async()=>{
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if("serviceWorker" in navigator){const had=!!navigator.serviceWorker.controller;let rl=false;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!rl){rl=true;location.reload()}});
+    navigator.serviceWorker.register("sw.js").then(r=>{try{r.update()}catch(e){}}).catch(()=>{})}
   let M;try{M=await loadAll()}catch(e){toast("Nie można otworzyć pamięci urządzenia: "+(e.message||e),null,null,8000);return}
   S.assets=localAssets;S.downloads=localDownloads;
   startWith(offlineStore(M));setTimeout(()=>{try{backupReminder()}catch(e){}},6000);
