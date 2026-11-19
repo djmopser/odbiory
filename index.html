@@ -106,6 +106,10 @@ button{cursor:pointer}
 .mk.syg.ghost::before{transform:rotate(-45deg)}
 .chip .mk.syg,.tool .mk.syg,.legend .mk.syg{transform:rotate(45deg)}
 
+.focus-fab{position:absolute;left:max(10px,env(safe-area-inset-left,0px));top:10px;z-index:6;width:48px;height:48px;border-radius:24px;border:1px solid rgba(0,0,0,.25);background:rgba(255,255,255,.55);color:#222;font-size:24px;line-height:1;opacity:.55;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 1px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;padding:0;transition:opacity .15s}
+.focus-fab:active,.focus-fab:hover{opacity:1}
+#app.focus .top,#app.focus .dock{display:none}
+#app.focus .focus-fab{opacity:.4}
 .undo-fab{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:14px;z-index:6;height:56px;padding:0 18px 0 14px;border-radius:28px;border:0;
   background:var(--ink);color:var(--panel);display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
 .undo-fab .ar{font-size:24px;line-height:1}
@@ -250,6 +254,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
   .icon-btn{height:48px;min-width:48px}
   .seg button{height:48px;padding:0 16px;font-size:16px}
   .undo-fab{height:60px;bottom:20px;right:20px}
+  #app.focus .vwrap{grid-column:1/3}
   .toast{bottom:28px!important}
   /* side panel */
   .scrim{background:rgba(10,15,20,.12)}
@@ -300,6 +305,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
     <div class="busy" id="busy" hidden>Wczytuję plan…</div>
     <div class="empty" id="empty" hidden></div>
   </main>
+  <button class="focus-fab" id="focusFab" aria-label="Pokaż lub ukryj paski" title="Pokaż / ukryj paski">☰</button>
   <button class="undo-fab" id="undoFab" hidden aria-label="Cofnij ostatnią zmianę"><span class="ar">↶</span><span>Cofnij</span><b id="undoN"></b></button>
   </div>
 
@@ -1566,6 +1572,12 @@ async function vOpenDoc(id){
 /* ---------- Boot ---------- */
 $("zoomIn").onclick=()=>setZoom(S.zoom*1.5);
 $("zoomOut").onclick=()=>setZoom(S.zoom/1.5);
+(function(){const a=$("app")||document.getElementById("app"),b=$("focusFab");if(!a||!b)return;
+function set(on){a.classList.toggle("focus",on);b.textContent=on?"☰":"✕";try{localStorage.setItem("odb_focus",on?"1":"0")}catch(e){}
+ setTimeout(()=>window.dispatchEvent(new Event("resize")),30)}
+b.onclick=()=>set(!a.classList.contains("focus"));
+let st=false;try{st=localStorage.getItem("odb_focus")==="1"}catch(e){}
+set(st)})();
 window.addEventListener("resize",()=>{clearTimeout(window.__rz);window.__rz=setTimeout(()=>{if(S.pageObj){const v=captureView();layoutStage();applyView(v);renderCanvas()}},200)});
 function startWith(store){
   S.store=store;let gotC=false,gotS=false,booted=false;
