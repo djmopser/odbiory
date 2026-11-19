@@ -530,19 +530,21 @@ document.querySelectorAll("#layerSeg button").forEach(x=>x.onclick=()=>{if(x.dat
 function subMarks(){
   const key=S.b+"|"+S.f;if(key===S.marksKey)return;
   if(S.unsubM)S.unsubM();S.marksKey=key;S.marks={};
-  S.unsubM=S.store.onMarks(S.b,S.f,m=>{S.marks=m;renderChips();renderMarks()});
+  S.unsubM=S.store.onMarks(S.b,S.f,m=>{S.marks=m;cancelAnimationFrame(S.mkRaf);S.mkRaf=requestAnimationFrame(()=>{renderChips();renderMarks()})});
 }
 
 /* ---------- PDF loading & rendering ---------- */
 async function getDoc(sh,sid){
   const key=sh.assetId||("local:"+sid);
-  if(S.docCache[key])return S.docCache[key];
+  if(S.docCache[key]){S.docOrder=(S.docOrder||[]).filter(k=>k!==key);S.docOrder.push(key);return S.docCache[key]}
   let bytes=null;
   if(sh.assetId){const r=await fetch("_blob/"+sh.assetId);if(!r.ok)throw new Error("HTTP "+r.status);bytes=new Uint8Array(await r.arrayBuffer())}
   else if(S.localFiles[sh.fingerprint])bytes=S.localFiles[sh.fingerprint];
   if(!bytes)return null;
   const doc=await pdfjsLib.getDocument({data:bytes.slice(0),isEvalSupported:false}).promise;
-  return(S.docCache[key]={bytes,doc});
+  S.docCache[key]={bytes,doc};S.docOrder=(S.docOrder||[]).filter(k=>k!==key);S.docOrder.push(key);
+  while(S.docOrder.length>5){const old=S.docOrder.find(k=>k!==S.curKey&&k!==key);if(!old)break;S.docOrder=S.docOrder.filter(k=>k!==old);const d=S.docCache[old];delete S.docCache[old];try{d.doc.destroy()}catch(e){}}
+  return S.docCache[key];
 }
 async function loadSheet(view){
   const seq=++S.loadSeq;const sid=curSheetId();const sh=S.sheets[sid];
@@ -554,8 +556,12 @@ async function loadSheet(view){
     if(!c){$("busy").hidden=true;showRelink(sh);return}
     const page=await c.doc.getPage(Math.min(sh.page||1,c.doc.numPages));if(seq!==S.loadSeq)return;
     S.pageObj=page;S.vpBase=page.getViewport({scale:1});S.dims=S.dims||{};S.dims[sid]={w:S.vpBase.width,h:S.vpBase.height};
+    S.curKey=sh.assetId||("local:"+sid);
     S.zoom=view?zoomForView(view):fitZoom();layoutStage();applyView(view);renderMarks();
-    $("busy").hidden=true;renderCanvas();
+    $("busy").hidden=true;
+    const bk=bmpKey();const hit=S.bmpCache&&S.bmpCache.get(bk);
+    if(hit){const cv=$("cv");cv.width=hit.width;cv.height=hit.height;cv.getContext("2d").drawImage(hit,0,0);S.bmpScale=hit.__scale;scheduleTile();prefetchSoon()}
+    else renderCanvas();
   }catch(e){if(seq===S.loadSeq)$("busy").textContent="Nie udało się otworzyć planu ("+(e.message||e)+").";}
 }
 function showEmpty(){
@@ -623,7 +629,22 @@ async function renderCanvas(){
   try{await S.renderTask.promise}catch(e){return}
   if(seq!==renderSeq||page!==S.pageObj)return;
   const cv=$("cv");cv.width=off.width;cv.height=off.height;cv.getContext("2d").drawImage(off,0,0);S.bmpScale=scale/dpr;scheduleTile();
+  off.__scale=S.bmpScale;S.bmpCache=S.bmpCache||new Map();const k=bmpKey();S.bmpCache.delete(k);S.bmpCache.set(k,off);
+  while(S.bmpCache.size>3)S.bmpCache.delete(S.bmpCache.keys().next().value);
+  prefetchSoon();
 }
+function bmpKey(){const h=S.sheets[curSheetId()]||{};return curSheetId()+"|"+(h.assetId||h.fingerprint||"")+"|"+Math.round(S.baseW*S.zoom*(window.devicePixelRatio||1))}
+/* While you work, quietly open the neighbouring plans (other layer, neighbouring floors) so switching is instant */
+function prefetchSoon(){clearTimeout(prefetchSoon.t);prefetchSoon.t=setTimeout(()=>{const run=async()=>{
+  const fl=floorsOf(S.b),i=fl.findIndex(z=>z.id===S.f),cand=[];
+  Object.keys(SHEET_OF).forEach(l=>{if(l!==S.l)cand.push(sheetId(S.b,S.f,l))});
+  [i+1,i-1].forEach(j=>{if(fl[j])cand.push(sheetId(S.b,fl[j].id,S.l))});
+  const seen=new Set([curSheetId()]);
+  for(const sid of cand){if(seen.has(sid))continue;seen.add(sid);const sh=S.sheets[sid];if(!sh)continue;
+    if(sh.size&&sh.size>12e6)continue;
+    try{const c=await getDoc(sh,sid);if(c)await c.doc.getPage(Math.min(sh.page||1,c.doc.numPages))}catch(e){}
+    await new Promise(r=>setTimeout(r,300))}};
+  (window.requestIdleCallback||(f=>setTimeout(f,500)))(run)},1200)}
 function setZoom(z,cx,cy){
   const v=$("viewer");z=Math.max(1,Math.min(MAXZ,z));if(!S.pageObj||Math.abs(z-S.zoom)<.001)return;
   if(cx==null){cx=v.clientWidth/2;cy=v.clientHeight/2}
