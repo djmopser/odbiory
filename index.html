@@ -1511,7 +1511,7 @@ async function vLoadDocs(B){
 
 async function vList(){
   const B=S.b;
-  const d=vShell("Śmietnik – budynek "+B,'<p class="meta">Pliki budynku '+B+' szyfrowane AES-256. Tylko to urządzenie – bez synchronizacji i kopii. Każdy budynek ma własną listę, hasło jest wspólne.</p><div class="btn-row"><label class="primary" for="vFile" role="button" style="height:52px;flex:1">Dodaj plik (PDF lub zdjęcie)</label><input type="file" id="vFile" class="vh" accept="application/pdf,.pdf,image/*" multiple><button class="ghost" id="vPw" style="height:52px">Zmień hasło</button></div><div id="vDocs"><p class="meta">Wczytuję…</p></div>');
+  const d=vShell("Śmietnik – budynek "+B,'<p class="meta">Pliki budynku '+B+' szyfrowane AES-256. Tylko to urządzenie – bez synchronizacji i kopii. Każdy budynek ma własną listę, hasło jest wspólne.</p><div class="btn-row"><label class="primary" for="vFile" role="button" style="height:52px;flex:1">Dodaj plik (PDF lub zdjęcie)</label><input type="file" id="vFile" class="vh" accept="application/pdf,.pdf,image/*" multiple><button class="ghost" id="vPw" style="height:52px">Zmień hasło</button></div><details class="more"><summary>Importuj zaszyfrowane pliki (.odbenc)</summary><p class="meta">Pliki zaszyfrowane Szyfratorem na komputerze. Podaj ich hasło, a potem wybierz pliki. Zostaną odszyfrowane tylko w pamięci i od razu zaszyfrowane hasłem Śmietnika.</p><label class="lbl">Hasło do plików .odbenc</label><input type="password" id="vIPw" autocomplete="off"><div class="btn-row"><label class="ghost" for="vImp" role="button" style="height:48px;display:flex;align-items:center;justify-content:center">Wybierz pliki .odbenc</label><input type="file" id="vImp" class="vh" accept=".odbenc,application/octet-stream" multiple></div><p class="meta" id="vIErr" style="color:#c0392b"></p></details><div id="vDocs"><p class="meta">Wczytuję…</p></div>');
   const box=d.querySelector("#vDocs");
   const render=async()=>{VAULT.docs=await vLoadDocs(B);
     box.innerHTML=VAULT.docs.length?VAULT.docs.map(x=>'<div class="vdoc" data-id="'+x.id+'"><button class="vopen"><b>'+esc(x.name)+'</b><span class="meta">'+(x.type==="application/pdf"?"PDF":"Obraz")+' · '+fmtSize(x.size)+' · '+fmtDate(x.created)+'</span></button><button class="ghost danger vdel" aria-label="Usuń">Usuń</button></div>').join(""):'<p class="meta" style="padding:12px 0">Brak plików dla tego budynku. Dodaj pierwszy plik.</p>'};
@@ -1529,6 +1529,24 @@ async function vList(){
     if(e.target.closest(".vdel")){const b=e.target.closest(".vdel");if(!b.dataset.c){b.dataset.c=1;b.textContent="Na pewno?";return}
       await IDB.del("vault","doc:"+id);await IDB.del("vault","marks:"+id);await render();return}
     if(e.target.closest(".vopen"))vOpenDoc(id)};
+  d.querySelector("#vImp").onchange=async e=>{
+    const files=[...e.target.files];e.target.value="";const pw=d.querySelector("#vIPw").value,er=d.querySelector("#vIErr");er.textContent="";
+    if(!pw){er.textContent="Najpierw wpisz hasło do plików .odbenc";return}
+    let ok=0;
+    for(const f of files){toast("Odszyfrowuję: "+f.name,null,null,60000);
+      try{const raw=new Uint8Array(await f.arrayBuffer());
+        if(_td.decode(raw.slice(0,8))!=="ODBENC1\n")throw new Error("to nie jest plik .odbenc");
+        const salt=raw.slice(8,24),iter=new DataView(raw.buffer,raw.byteOffset).getUint32(24),iv=raw.slice(28,40);
+        if(iter<100000||iter>5000000)throw new Error("nieprawidłowy plik");
+        const k=await vKey(pw,salt,iter);let pl;
+        try{pl=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},k,raw.slice(40)))}catch(x){throw new Error("złe hasło lub uszkodzony plik")}
+        const ml=new DataView(pl.buffer,pl.byteOffset).getUint32(0);const meta=JSON.parse(_td.decode(pl.slice(4,4+ml)));const bytes=pl.slice(4+ml);
+        const id="d"+uid()+uid();
+        await IDB.put("vault","doc:"+id,{id,type:meta.t||"application/octet-stream",size:bytes.length,created:Date.now(),name:await vEncJson(VAULT.key,{n:meta.n||f.name,b:B}),data:await vEnc(VAULT.key,bytes)});
+        await IDB.put("vault","marks:"+id,await vEncJson(VAULT.key,[]));
+        pl.fill(0);bytes.fill(0);raw.fill(0);ok++}
+      catch(er2){er.textContent=f.name+": "+(er2.message||er2);break}}
+    if(ok)toast("Zaimportowano i zaszyfrowano: "+ok);else toast("Nic nie zaimportowano",null,null,2500);vTouch();await render()};
   d.querySelector("#vPw").onclick=vChangePw}
 
 async function vChangePw(){

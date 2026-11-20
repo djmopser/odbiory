@@ -1,0 +1,40 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Szyfrator plików (AES-256)</title>
+<style>
+body{font:16px -apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:24px auto;padding:0 16px;color:#18212b;background:#f4f6f8}
+h1{font-size:22px}label{display:block;margin:14px 0 4px;font-weight:600;font-size:14px}
+input[type=password],input[type=file]{width:100%;box-sizing:border-box;padding:10px;border:1px solid #bbb;border-radius:8px;font-size:16px;background:#fff}
+button{margin-top:16px;padding:12px 20px;border:0;border-radius:10px;background:#1f5fbf;color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+button:disabled{opacity:.5}.m{font-size:13px;color:#5d6b78;line-height:1.45}#out a{display:block;margin:8px 0;padding:10px;background:#fff;border:1px solid #ccd;border-radius:8px;text-decoration:none;color:#1f5fbf;word-break:break-all}
+#err{color:#c0392b;font-size:14px;min-height:18px}
+</style></head><body>
+<h1>Szyfrator plików (AES-256)</h1>
+<p class="m">Ten plik działa w całości w Twojej przeglądarce, bez internetu i bez wysyłania czegokolwiek. Zaszyfrowane pliki (<b>.odbenc</b>) przenieś na iPada i otwórz w aplikacji: <b>Śmietnik → Importuj zaszyfrowane</b>. Nazwa i zawartość pliku są ukryte, widać tylko numer.</p>
+<label>Pliki do zaszyfrowania (PDF, zdjęcia…)</label><input type="file" id="f" multiple>
+<label>Hasło (min. 12 znaków; najlepiej 4–5 losowych słów)</label><input type="password" id="p1" autocomplete="new-password">
+<label>Powtórz hasło</label><input type="password" id="p2" autocomplete="new-password">
+<div id="err"></div><button id="go">Zaszyfruj</button>
+<div id="out"></div>
+<p class="m">Algorytm: AES-256-GCM, klucz z hasła przez PBKDF2-SHA256 (600 000 iteracji). Hasła nie da się odzyskać. Po zaszyfrowaniu usuń oryginały i opróżnij kosz.</p>
+<script>
+const te=new TextEncoder();
+async function key(pw,salt,iter){const b=await crypto.subtle.importKey("raw",te.encode(pw),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:iter,hash:"SHA-256"},b,{name:"AES-GCM",length:256},false,["encrypt"])}
+const $=id=>document.getElementById(id);
+$("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files],a=$("p1").value;er.textContent="";
+ if(!fs.length){er.textContent="Wybierz pliki";return}
+ if(a.length<12){er.textContent="Hasło musi mieć co najmniej 12 znaków";return}
+ if(a!==$("p2").value){er.textContent="Hasła się różnią";return}
+ $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;
+ try{for(const f of fs){er.textContent="Szyfruję: "+f.name+"…";
+  const data=new Uint8Array(await f.arrayBuffer());
+  const meta=te.encode(JSON.stringify({n:f.name,t:f.type||"application/octet-stream"}));
+  const pl=new Uint8Array(4+meta.length+data.length);new DataView(pl.buffer).setUint32(0,meta.length);pl.set(meta,4);pl.set(data,4+meta.length);
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=600000;
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},await key(a,salt,iter),pl));
+  const head=new Uint8Array(8+16+4+12);head.set(te.encode("ODBENC1\n"),0);head.set(salt,8);new DataView(head.buffer).setUint32(24,iter);head.set(iv,28);
+  const blob=new Blob([head,ct],{type:"application/octet-stream"});n++;
+  const l=document.createElement("a");l.href=URL.createObjectURL(blob);l.download="plik_"+stamp+"_"+String(n).padStart(3,"0")+".odbenc";l.textContent="⬇ "+l.download+"  ("+Math.round(blob.size/1024)+" KB)";$("out").appendChild(l)}
+  er.textContent="Gotowe: "+n+" plik(i). Pobierz każdy z listy poniżej."}
+ catch(e){er.textContent="Błąd: "+(e.message||e)}
+ $("go").disabled=false};
+</script></body></html>
