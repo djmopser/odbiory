@@ -294,7 +294,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
   <header class="top">
     <div class="row">
       <div class="seg bld" id="bldSeg" role="group" aria-label="Budynek"><span class="cap">Bud.</span></div>
-      <button class="icon-btn" id="binBtn" aria-label="Śmietnik – zaszyfrowane pliki budynku" style="width:auto;padding:0 12px;gap:6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Śmietnik 1</button><button class="icon-btn" id="bin2Btn" aria-label="Śmietnik 2 – zaszyfrowane plany w warstwach" style="width:auto;padding:0 12px;gap:6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Śmietnik 2</button>
+      <button class="icon-btn" id="binBtn" aria-label="Śmietnik – zaszyfrowane pliki budynku" style="width:auto;padding:0 12px;gap:6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Śmietnik 1</button><button class="icon-btn" id="bin2Btn" aria-label="Śmietnik 2 – zaszyfrowane schematy" style="width:auto;padding:0 12px;gap:6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Śmietnik 2</button>
       <div class="seg layer-seg" id="layerSeg" role="group" aria-label="Plan">
         <button data-l="el"><span class="dot"></span><span class="lbl">Gniazda</span></button>
         <button data-l="z" class="zbtn"><span class="dot"></span><span class="lbl">Z</span></button>
@@ -1140,7 +1140,7 @@ $("menuBtn").onclick=()=>{
     '<button class="ghost" id="exCsv">Pobierz listę punktów – Bud. '+S.b+' (CSV do Excela)</button>'+
     (window.__OFFLINE?'':'<button class="ghost" id="ipadIn">Wczytaj zmiany z iPada (plik)</button><button class="ghost" id="ipadOut">Pobierz paczkę dla iPada</button>')+
     '<button class="ghost" id="vaultBtn">Śmietnik 1 (pliki budynku, AES-256)</button>'+
-    '<button class="ghost" id="vault2Btn">Śmietnik 2 (zaszyfrowane plany w warstwach)</button>'+
+    '<button class="ghost" id="vault2Btn">Śmietnik 2 (zaszyfrowane schematy)</button>'+
     '<button class="ghost" id="syncBtn">Synchronizacja i kopia zapasowa</button>'+
     '<button class="ghost" id="zipAll">Pobierz dokumentację zdjęciową (ZIP, wszystkie budynki)</button>'+
     '<button class="ghost" id="swap">'+(has?"Podmień PDF dla tego planu":"Wgraj PDF dla tego planu")+'</button>'+

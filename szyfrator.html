@@ -14,10 +14,10 @@ button:disabled{opacity:.5}.m{font-size:13px;color:#5d6b78;line-height:1.45}#out
 <label>Pliki do zaszyfrowania (PDF, zdjęcia…)</label><input type="file" id="f" multiple>
 <label>…albo foldery (np. trzy foldery: budynek 1, 2 i 7) – klikaj „Dodaj folder" po kolei, wszystko zostanie zaszyfrowane razem</label><input type="file" id="fd" webkitdirectory multiple style="display:none"><button type="button" id="addf" style="margin-top:0">+ Dodaj folder</button> <button type="button" id="clrf" style="margin-top:0;background:#777">Wyczyść foldery</button><div id="picked" class="m"></div>
 <label>Tryb (zostaw „AUTOMATYCZNIE", chyba że chcesz wszystko wysłać w jedno miejsce ręcznie)</label>
-<select id="dest"><option value="auto">AUTOMATYCZNIE z nazwy pliku / folderu (zalecane)</option><option value="">Śmietnik 1 (zwykły plik budynku)</option><option value="ssp">Śmietnik 1 → Plan instalacji SSP</option><option value="tel">Śmietnik 1 → Plan instalacji teleinformatycznej sieci strukturalnej</option><option value="gn">Śmietnik 2 → Gniazda</option><option value="os">Śmietnik 2 → Oświetlenie</option><option value="tk">Śmietnik 2 → Trasy kablowe</option><option value="od">Śmietnik 2 → Instalacja odgromowa</option><option value="s2">Śmietnik 2 → Schematy2</option></select>
+<select id="dest"><option value="auto">AUTOMATYCZNIE z nazwy pliku / folderu (zalecane)</option><option value="">Śmietnik 1 (zwykły plik budynku)</option><option value="ssp">Śmietnik 1 → Plan instalacji SSP</option><option value="tel">Śmietnik 1 → Plan instalacji teleinformatycznej sieci strukturalnej</option><option value="s2">Śmietnik 2 → Schematy</option></select>
 <div id="manual" style="display:none"><label>Budynek</label><select id="bld"><option>1</option><option>2</option><option>7</option></select>
 <label>Piętro / nazwa grupy (opcjonalnie – jeśli nazwa pliku zawiera 0p, 1p, 2p… aplikacja sama ustawi piętro: 0p = parter, 1p = piętro 1, 2p = piętro 2)</label><input type="text" id="flr" placeholder="np. Parter">
-</div><p class="m"><b>Tryb automatyczny:</b> budynek, warstwa i piętro są odczytywane z nazwy pliku lub ścieżki folderu. Budynek: <b>B1</b>, <b>B2</b>, <b>B7</b> (np. folder „B1" albo „B1_…" w nazwie). Warstwa: słowa <b>ssp</b> (Śmietnik 1), <b>teleinformatyczna</b>/<b>sieć strukturalna</b> (Śmietnik 1), <b>gniazda</b>, <b>oswietlenie</b>, <b>trasy</b> (lub koryta/TK), <b>odgrom</b>, <b>schemat</b>. Piętro: <b>0p</b> parter, <b>1p</b> piętro 1, <b>2p</b> piętro 2… Przykład: <i>B1/Gniazda/B1_gniazda_1p.pdf</i>. Pliki bez rozpoznanej warstwy zostaną wypisane – importuj je w Śmietniku 1. Ręczne ustawienia pojawiają się tylko po wybraniu trybu ręcznego.</p>
+</div><p class="m"><b>Tryb automatyczny:</b> budynek jest odczytywany z nazwy pliku lub folderu (<b>B1</b>, <b>B2</b>, <b>B7</b>, „Budynek 1", „Bud 7" albo folder „1/2/7"). Pliki z <b>ssp</b> lub <b>teleinformatyczna / sieć strukturalna</b> w nazwie trafiają do <b>Śmietnika 1</b> (z podziałem na piętra: 0p, 1p, 2p, parter, poddasze, dach), wszystkie pozostałe do <b>Śmietnika 2</b> (schematy, lista dokumentów dla budynku). Pliki bez rozpoznanego budynku zostaną wypisane.</p>
 <p class="m">Ustawienia dotyczą wszystkich plików z jednego szyfrowania. Dla różnych pięter/warstw uruchom szyfrowanie osobno.</p>
 <label>Hasło (min. 12 znaków; najlepiej 4–5 losowych słów)</label><input type="password" id="p1" autocomplete="new-password">
 <label>Powtórz hasło</label><input type="password" id="p2" autocomplete="new-password">
@@ -37,7 +37,7 @@ $("dest").onchange=()=>{const v=$("dest").value;$("manual").style.display=(v&&v!
 const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l").replace(/Ł/g,"L").toLowerCase();
 function detect(path){const t=norm(path);
  let b=null;const mb=/(?:^|[^a-z0-9])(?:b|bud|budynek)\.?[ _-]?(?:nr\.?)?[ _-]?([127])(?![0-9])/.exec(t)||/(?:^|\/)([127])(?=\/)/.exec(t);if(mb)b=mb[1];
- let l=null;if(/ssp|sygnalizac|pozar/.test(t))l="ssp";else if(/teleinf|teletech|struktural|siec(?![a-z])|lan(?![a-z])/.test(t))l="tel";else if(/gniazd|gn(?![a-z])/.test(t))l="gn";else if(/oswietl|(?:^|[^a-z])os(?![a-z])/.test(t))l="os";else if(/trasy|trasa|koryt|(?:^|[^a-z])tk(?![a-z0-9])/.test(t))l="tk";else if(/odgrom|piorun|(?:^|[^a-z])od(?![a-z])/.test(t))l="od";else if(/schemat|rozdziel/.test(t))l="s2";
+ let l=null;if(/ssp|sygnalizac|pozar/.test(t))l="ssp";else if(/teleinf|teletech|struktural|siec(?![a-z])|lan(?![a-z])/.test(t))l="tel";else l="s2";
  let p=null,f=null;const mp=/(?:^|[^0-9a-z])(\d{1,2})\s?p(?![a-z0-9])/.exec(t)||/(?:^|[^0-9a-z])(\d{1,2})[ _.-]?pietro/.exec(t)||/pietro[ _.-]?(\d{1,2})(?![0-9])/.exec(t);if(mp)p=+mp[1];
  else if(/parter/.test(t))p=0;else if(/poddasz/.test(t))f="Poddasze";else if(/(?:^|[^a-z])dach(?![a-z])/.test(t))f="Dach";
  return{b,l,p,f}}
@@ -46,11 +46,11 @@ $("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files,...picked],a=$("
  if(!fs.length){er.textContent="Wybierz pliki lub folder";return}
  if(a.length<12){er.textContent="Hasło musi mieć co najmniej 12 znaków";return}
  if(a!==$("p2").value){er.textContent="Hasła się różnią";return}
- $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;const recs=[];const LN={ssp:"SSP (Śmietnik 1)",tel:"Teleinformatyka (Śmietnik 1)",gn:"Gniazda",os:"Oświetlenie",tk:"Trasy",od:"Odgromowa",s2:"Schematy2"};const warn=[];const dest=$("dest").value;
+ $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;const recs=[];const LN={ssp:"SSP (Śmietnik 1)",tel:"Teleinformatyka (Śmietnik 1)",s2:"Schematy (Śmietnik 2)"};const warn=[];const dest=$("dest").value;
  try{const salt=crypto.getRandomValues(new Uint8Array(16)),iter=600000,k=await key(a,salt,iter);
   for(const f of fs){er.textContent="Szyfruję ("+(n+1)+"/"+fs.length+"): "+f.name+"…";
   const path=f.webkitRelativePath||f.name;let m={n:f.name,t:f.type||"application/octet-stream"},info="";
-  if(dest==="auto"){const d=detect(path);if(d.l&&d.b){m.l=d.l;m.b=d.b;if(d.p!=null)m.p=d.p;if(d.f)m.f=d.f;info=" → B"+d.b+" · "+LN[d.l]+(d.p!=null?" · "+d.p+"p":"")+(d.f?" · "+d.f:"")}else{info=" → Śmietnik 1"+(d.b?" (B"+d.b+")":"")+" – nie rozpoznano "+(d.b?"warstwy":"budynku")+" w: "+path;warn.push(path);if(d.b)m.b=d.b;if(d.p!=null)m.p=d.p}}
+  if(dest==="auto"){const d=detect(path);if(d.b){m.l=d.l;m.b=d.b;if(d.p!=null)m.p=d.p;if(d.f)m.f=d.f;info=" → B"+d.b+" · "+LN[d.l]+(d.p!=null?" · "+d.p+"p":"")+(d.f?" · "+d.f:"")}else{info=" → Śmietnik 1"+(d.b?" (B"+d.b+")":"")+" – nie rozpoznano "+(d.b?"warstwy":"budynku")+" w: "+path;warn.push(path);if(d.b)m.b=d.b;if(d.p!=null)m.p=d.p}}
   else if(dest){m.l=dest;m.b=$("bld").value;const fl=$("flr").value.trim();if(fl)m.f=fl}
   const data=new Uint8Array(await f.arrayBuffer());
   const meta=te.encode(JSON.stringify(m));
