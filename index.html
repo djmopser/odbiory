@@ -15,7 +15,7 @@
 /* Layout: full-screen plan viewer. Top: building / layer switch, floor strip, counters. Bottom: big tool dock for one-thumb use on site */
 :root{
   --bg:#eef1f4; --panel:#ffffff; --ink:#18212b; --muted:#5d6b78; --line:#cfd6dd;
-  --accent:#1f5fbf; --accent-ink:#ffffff; --el:#1f5fbf; --sw:#b07800; --zl:#0f7b72; --sheet-shadow:0 -8px 30px rgba(15,25,40,.18);
+  --accent:#1f5fbf; --accent-ink:#ffffff; --el:#1f5fbf; --sw:#b07800; --zl:#0f7b72; --tk:#7a3fd0; --od:#c2410c; --sheet-shadow:0 -8px 30px rgba(15,25,40,.18);
   --paper:#ffffff;
   /* Marker colors sit on the white plan paper, so they stay the same in both themes */
   --k-done:#1d8a3e; --k-peszel:#e06a00; --k-czujka:#d22b2b; --k-rop:#b30f1f; --k-syg:#7a3fd0; --k-inne:#1f6fd1;
@@ -24,10 +24,10 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#11161c; --panel:#1a2129; --ink:#e7edf3; --muted:#9aa8b5; --line:#2e3944;
-  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}}
+  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --tk:#b48cff; --od:#fb923c; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#11161c; --panel:#1a2129; --ink:#e7edf3; --muted:#9aa8b5; --line:#2e3944;
-  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}
+  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --tk:#b48cff; --od:#fb923c; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}
 [hidden]{display:none!important}
 .vh{position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 label.ghost,label.primary{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-sizing:border-box;-webkit-user-select:none;user-select:none}
@@ -54,12 +54,16 @@ button{cursor:pointer}
 .layer-seg button .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .layer-seg button[data-l="el"] .dot{background:var(--el)}
 .layer-seg button[data-l="sw"] .dot{background:var(--sw)}
+.layer-seg button[data-l="tk"] .dot{background:var(--tk)}
+.layer-seg button[data-l="od"] .dot{background:var(--od)}
 .layer-seg button[data-l="z"] .dot{background:var(--zl)}
 .layer-seg button.zbtn{flex:0 0 auto;padding:0 14px}
 .layer-seg button[aria-pressed="true"][data-l="z"]{background:var(--zl);color:#fff}
 @media (max-width:400px){.layer-seg button .dot{display:none}.layer-seg button{padding:0 6px}.seg .cap{display:none}}
 .layer-seg button[aria-pressed="true"][data-l="el"]{background:var(--el);color:#fff}
 .layer-seg button[aria-pressed="true"][data-l="sw"]{background:var(--sw);color:#1a1300}
+.layer-seg button[aria-pressed="true"][data-l="tk"]{background:var(--tk);color:#fff}
+.layer-seg button[aria-pressed="true"][data-l="od"]{background:var(--od);color:#fff}
 .layer-seg button[aria-pressed="true"] .dot{background:currentColor}
 .layer-seg button.nofile{opacity:.5}
 .icon-btn{height:40px;min-width:40px;border:1px solid var(--line);border-radius:8px;background:var(--bg);display:grid;place-items:center;padding:0 10px;font-weight:600;flex:none}
@@ -292,6 +296,8 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
         <button data-l="el"><span class="dot"></span><span class="lbl">Gniazda</span></button>
         <button data-l="z" class="zbtn"><span class="dot"></span><span class="lbl">Z</span></button>
         <button data-l="sw"><span class="dot"></span><span class="lbl">Oświetl.</span></button>
+        <button data-l="tk"><span class="dot"></span><span class="lbl">Trasy kabl.</span></button>
+        <button data-l="od"><span class="dot"></span><span class="lbl">Odgrom.</span></button>
       </div>
     </div>
     <div class="row">
@@ -334,10 +340,10 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
 "use strict";
 const $=id=>document.getElementById(id);
 const BUILDINGS=["1","2","7"];
-const LAYERS={el:"Gniazda",z:"Z",sw:"Oświetlenie"};
-const LAYER_SHORT={el:"G",z:"Z",sw:"O"};
+const LAYERS={el:"Gniazda",z:"Z",sw:"Oświetlenie",tk:"Trasy kablowe",od:"Instalacja odgromowa"};
+const LAYER_SHORT={el:"G",z:"Z",sw:"O",tk:"T",od:"P"};
 /* Z is a second set of marks drawn on the sockets (Gniazda) drawing */
-const SHEET_OF={el:"el",z:"el",sw:"sw"};
+const SHEET_OF={el:"el",z:"el",sw:"sw",tk:"tk",od:"od"};
 /* Extras at a spot where the plan shows an element stay on that plan; extras where the plan shows nothing belong on Z (moved with one tap) */
 const EXTRA_KINDS=new Set(["peszel","czujka","rop","syg","inne"]);
 function inLayer(m,l){return m.layer===l}
@@ -529,7 +535,7 @@ function go(ch,forced){
   S.undo=[];updUndo();S.moving=null;
   subMarks();renderAll();loadSheet(view);
 }
-document.querySelectorAll("#layerSeg button").forEach(x=>x.onclick=()=>{if(x.dataset.l!==S.l)go({l:x.dataset.l})});
+document.querySelectorAll("#layerSeg button").forEach(x=>x.onclick=()=>{const l=x.dataset.l;if(l===S.l)return;if(l==="od"){const fl=floorsOf(S.b);go({l,f:fl[fl.length-1].id})}else go({l})});
 function subMarks(){
   const key=S.b+"|"+S.f;if(key===S.marksKey)return;
   if(S.unsubM)S.unsubM();S.marksKey=key;S.marks={};
@@ -571,7 +577,7 @@ function showEmpty(){
   const em=$("empty");em.hidden=false;
   const others=uniqueFiles();
   em.innerHTML='<div class="empty-card"><div class="where">'+esc(where())+'</div>'+
-    '<h1>Brak planu '+(S.l==="sw"?"oświetlenia":"gniazd")+' dla tego piętra</h1>'+(S.l==="z"?'<p>Plan Z korzysta z rysunku gniazd. Wgraj plan gniazd, a pojawi się w obu miejscach.</p>':'')+
+    '<h1>Brak planu '+({sw:"oświetlenia",tk:"tras kablowych",od:"instalacji odgromowej (dach – ostatnie piętro)"}[S.l]||"gniazd")+' dla tego piętra</h1>'+(S.l==="z"?'<p>Plan Z korzysta z rysunku gniazd. Wgraj plan gniazd, a pojawi się w obu miejscach.</p>':'')+
     '<p>Wgraj PDF z tym rzutem. Jeśli jeden plik ma kilka pięter na osobnych stronach, wybierzesz właściwą stronę.</p>'+
     '<button class="primary" id="emUp">Wgraj PDF</button>'+
     (others.length?'<button class="ghost" id="emReuse">Użyj pliku, który już jest wgrany</button>':'')+
@@ -695,7 +701,7 @@ $("stage").addEventListener("click",async e=>{
   if(kind==="done")toast("Zaznaczono jako zrobione");
   else if(kind==="uwaga")openMark(id);
   else if(EXTRA_KINDS.has(kind)&&S.l==="el"&&await autoLayer(id,m)){}
-  else if(EXTRA_KINDS.has(kind)&&S.l!=="z")toast(KINDS[kind].label+({el:" na Gniazdach",sw:" na Oświetleniu"}[S.l]||"")+" – przy elemencie z projektu","Brak na planie → Z",()=>moveToZ(id,true),6000);
+  else if(EXTRA_KINDS.has(kind)&&S.l!=="z")toast(KINDS[kind].label+({el:" na Gniazdach",sw:" na Oświetleniu",tk:" na Trasach kablowych",od:" na instalacji odgromowej"}[S.l]||"")+" – przy elemencie z projektu","Brak na planie → Z",()=>moveToZ(id,true),6000);
   else if(kind==="peszel")toast("Peszel dodany – stuknij go, by podać ilość","Ile?",()=>openMark(id),4500);
   else toast(KINDS[kind].label+" dodany","Opis / zdjęcie",()=>openMark(id),4500);
 });
@@ -1097,7 +1103,7 @@ function editFloor(){
     if(!b.dataset.c){b.dataset.c=1;b.textContent=n?"Usuń razem z "+n+" znacznikami":"Stuknij ponownie, aby usunąć";return}
     closeSheet();const fid=S.f,bb=S.b;
     for(const id of Object.keys(S.marks)){await safe(S.store.delMark(id),"Nie usunięto znacznika")}
-    for(const l of ["el","sw"]){if(S.sheets[sheetId(bb,fid,l)])await safe(S.store.delSheet(sheetId(bb,fid,l)),"Nie usunięto planu")}
+    for(const l of ["el","sw","tk","od"]){if(S.sheets[sheetId(bb,fid,l)])await safe(S.store.delSheet(sheetId(bb,fid,l)),"Nie usunięto planu")}
     await commit(a=>{const i=a.findIndex(z=>z.id===fid);if(i>=0)a.splice(i,1)});go({f:floorsOf(bb)[0].id});toast("Piętro usunięte")};
 }
 
