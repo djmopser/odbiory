@@ -50,7 +50,7 @@ $("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files,...picked],a=$("
  try{const salt=crypto.getRandomValues(new Uint8Array(16)),iter=600000,k=await key(a,salt,iter);
   for(const f of fs){er.textContent="Szyfruję ("+(n+1)+"/"+fs.length+"): "+f.name+"…";
   const path=f.webkitRelativePath||f.name;let m={n:f.name,t:f.type||"application/octet-stream"},info="";
-  if(dest==="auto"){const d=detect(path);if(d.b){m.l=d.l;m.b=d.b;if(d.p!=null)m.p=d.p;if(d.f)m.f=d.f;info=" → B"+d.b+" · "+LN[d.l]+(d.p!=null?" · "+d.p+"p":"")+(d.f?" · "+d.f:"")}else{info=" → Śmietnik 1"+(d.b?" (B"+d.b+")":"")+" – nie rozpoznano "+(d.b?"warstwy":"budynku")+" w: "+path;warn.push(path);if(d.b)m.b=d.b;if(d.p!=null)m.p=d.p}}
+  if(dest==="auto"){const d=detect(path);if(!d.b){warn.push(path);continue}if(d.b){m.l=d.l;m.b=d.b;if(d.p!=null)m.p=d.p;if(d.f)m.f=d.f;info=" → B"+d.b+" · "+LN[d.l]+(d.p!=null?" · "+d.p+"p":"")+(d.f?" · "+d.f:"")}else{info=" → Śmietnik 1"+(d.b?" (B"+d.b+")":"")+" – nie rozpoznano "+(d.b?"warstwy":"budynku")+" w: "+path;warn.push(path);if(d.b)m.b=d.b;if(d.p!=null)m.p=d.p}}
   else if(dest){m.l=dest;m.b=$("bld").value;const fl=$("flr").value.trim();if(fl)m.f=fl}
   const data=new Uint8Array(await f.arrayBuffer());
   const meta=te.encode(JSON.stringify(m));
@@ -63,7 +63,8 @@ $("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files,...picked],a=$("
   if(n>1){const parts=[te.encode("ODBBUN1\n")];for(const r of recs){const h=new Uint8Array(4);new DataView(h.buffer).setUint32(0,r.size);parts.push(h,r)}
    const bb=new Blob(parts,{type:"application/octet-stream"});const bl=document.createElement("a");bl.href=URL.createObjectURL(bb);bl.download="paczka_zbiorcza_"+stamp+".odbbun";bl.style.fontWeight="700";bl.textContent="⬇ JEDEN PLIK ZE WSZYSTKIM: "+bl.download+"  ("+Math.round(bb.size/1048576)+" MB, "+n+" plików) – tylko to wrzuć na iPada";$("out").prepend(bl)}
   if(n>1){const all=document.createElement("button");all.textContent="Pobierz osobno ("+n+")";all.onclick=async()=>{for(const a2 of $("out").querySelectorAll("a")){a2.click();await new Promise(r=>setTimeout(r,350))}};$("out").prepend(all)}
-  er.textContent="Gotowe: "+n+" plik(i)."+(warn.length?" Uwaga: "+warn.length+" plik(ów) bez rozpoznanej warstwy/budynku – importuj je w Śmietniku 1 (w Śmietniku 2 trafiłyby do aktualnie wybranej warstwy).":"")}
+  er.textContent="Gotowe: "+n+" plik(i) zaszyfrowano."+(warn.length?" POMINIĘTO "+warn.length+" – nie rozpoznano budynku (lista poniżej).":"");
+  if(warn.length){const w=document.createElement("div");w.style.cssText="margin:12px 0;padding:10px;border:2px solid #c0392b;border-radius:8px;background:#fdecea;font-size:14px";w.innerHTML="<b>Nie rozpoznano budynku – te pliki NIE zostały zaszyfrowane:</b><br>"+warn.map(x=>"• "+x.replace(/</g,"&lt;")).join("<br>")+"<br><i>Dodaj do nazwy pliku lub folderu np. B1, B2 albo B7 i zaszyfruj ponownie.</i>";$("out").prepend(w)}}
  catch(e){er.textContent="Błąd: "+(e.message||e)}
  $("go").disabled=false};
 </script></body></html>
