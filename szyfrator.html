@@ -9,14 +9,15 @@ button:disabled{opacity:.5}.m{font-size:13px;color:#5d6b78;line-height:1.45}#out
 #err{color:#c0392b;font-size:14px;min-height:18px}
 </style></head><body>
 <h1>Szyfrator plików (AES-256)</h1>
+<p class="m" style="background:#e8f1ff;padding:10px;border-radius:8px"><b>Najprościej:</b> kliknij „+ Dodaj folder" dla każdego z trzech folderów (budynek 1, 2, 7), wpisz hasło, „Zaszyfruj" i pobierz <b>jeden plik .odbbun</b>. Budynek, kategoria i piętro zostaną odczytane z nazw folderów – nic nie wybierasz ręcznie.</p>
 <p class="m">Ten plik działa w całości w Twojej przeglądarce, bez internetu i bez wysyłania czegokolwiek. Zaszyfrowane pliki (<b>.odbenc</b>) przenieś na iPada i otwórz w aplikacji: <b>Śmietnik 1 lub 2 → Importuj zaszyfrowane</b>. Nazwa i zawartość pliku są ukryte, widać tylko numer.</p>
 <label>Pliki do zaszyfrowania (PDF, zdjęcia…)</label><input type="file" id="f" multiple>
 <label>…albo foldery (np. trzy foldery: budynek 1, 2 i 7) – klikaj „Dodaj folder" po kolei, wszystko zostanie zaszyfrowane razem</label><input type="file" id="fd" webkitdirectory multiple style="display:none"><button type="button" id="addf" style="margin-top:0">+ Dodaj folder</button> <button type="button" id="clrf" style="margin-top:0;background:#777">Wyczyść foldery</button><div id="picked" class="m"></div>
-<label>Dokąd w aplikacji (Śmietnik 2) – dla Śmietnika 1 zostaw „Śmietnik 1"</label>
+<label>Tryb (zostaw „AUTOMATYCZNIE", chyba że chcesz wszystko wysłać w jedno miejsce ręcznie)</label>
 <select id="dest"><option value="auto">AUTOMATYCZNIE z nazwy pliku / folderu (zalecane)</option><option value="">Śmietnik 1 (zwykły plik budynku)</option><option value="ssp">Śmietnik 1 → Plan instalacji SSP</option><option value="tel">Śmietnik 1 → Plan instalacji teleinformatycznej sieci strukturalnej</option><option value="gn">Śmietnik 2 → Gniazda</option><option value="os">Śmietnik 2 → Oświetlenie</option><option value="tk">Śmietnik 2 → Trasy kablowe</option><option value="od">Śmietnik 2 → Instalacja odgromowa</option><option value="s2">Śmietnik 2 → Schematy2</option></select>
-<label>Budynek</label><select id="bld"><option>1</option><option>2</option><option>7</option></select>
+<div id="manual" style="display:none"><label>Budynek</label><select id="bld"><option>1</option><option>2</option><option>7</option></select>
 <label>Piętro / nazwa grupy (opcjonalnie – jeśli nazwa pliku zawiera 0p, 1p, 2p… aplikacja sama ustawi piętro: 0p = parter, 1p = piętro 1, 2p = piętro 2)</label><input type="text" id="flr" placeholder="np. Parter">
-<p class="m"><b>Tryb automatyczny:</b> budynek, warstwa i piętro są odczytywane z nazwy pliku lub ścieżki folderu. Budynek: <b>B1</b>, <b>B2</b>, <b>B7</b> (np. folder „B1" albo „B1_…" w nazwie). Warstwa: słowa <b>ssp</b> (Śmietnik 1), <b>teleinformatyczna</b>/<b>sieć strukturalna</b> (Śmietnik 1), <b>gniazda</b>, <b>oswietlenie</b>, <b>trasy</b> (lub koryta/TK), <b>odgrom</b>, <b>schemat</b>. Piętro: <b>0p</b> parter, <b>1p</b> piętro 1, <b>2p</b> piętro 2… Przykład: <i>B1/Gniazda/B1_gniazda_1p.pdf</i>. Pliki bez rozpoznanej warstwy zostaną wypisane – importuj je w Śmietniku 1. Ręczne ustawienia poniżej działają dla pozostałych trybów.</p>
+</div><p class="m"><b>Tryb automatyczny:</b> budynek, warstwa i piętro są odczytywane z nazwy pliku lub ścieżki folderu. Budynek: <b>B1</b>, <b>B2</b>, <b>B7</b> (np. folder „B1" albo „B1_…" w nazwie). Warstwa: słowa <b>ssp</b> (Śmietnik 1), <b>teleinformatyczna</b>/<b>sieć strukturalna</b> (Śmietnik 1), <b>gniazda</b>, <b>oswietlenie</b>, <b>trasy</b> (lub koryta/TK), <b>odgrom</b>, <b>schemat</b>. Piętro: <b>0p</b> parter, <b>1p</b> piętro 1, <b>2p</b> piętro 2… Przykład: <i>B1/Gniazda/B1_gniazda_1p.pdf</i>. Pliki bez rozpoznanej warstwy zostaną wypisane – importuj je w Śmietniku 1. Ręczne ustawienia pojawiają się tylko po wybraniu trybu ręcznego.</p>
 <p class="m">Ustawienia dotyczą wszystkich plików z jednego szyfrowania. Dla różnych pięter/warstw uruchom szyfrowanie osobno.</p>
 <label>Hasło (min. 12 znaków; najlepiej 4–5 losowych słów)</label><input type="password" id="p1" autocomplete="new-password">
 <label>Powtórz hasło</label><input type="password" id="p2" autocomplete="new-password">
@@ -32,6 +33,7 @@ function showPicked(){const c={};for(const f of picked){const d=detect(f.webkitR
 $("addf").onclick=()=>$("fd").click();
 $("fd").onchange=e=>{const have=new Set(picked.map(pkey));for(const f of e.target.files)if(!have.has(pkey(f))){picked.push(f);have.add(pkey(f))}e.target.value="";showPicked()};
 $("clrf").onclick=()=>{picked=[];showPicked()};
+$("dest").onchange=()=>{const v=$("dest").value;$("manual").style.display=(v&&v!=="auto"&&v!=="ssp"&&v!=="tel")||v==="ssp"||v==="tel"?"block":"none"};
 const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l").replace(/Ł/g,"L").toLowerCase();
 function detect(path){const t=norm(path);
  let b=null;const mb=/(?:^|[^a-z0-9])(?:b|bud|budynek)\.?[ _-]?(?:nr\.?)?[ _-]?([127])(?![0-9])/.exec(t)||/(?:^|\/)([127])(?=\/)/.exec(t);if(mb)b=mb[1];
