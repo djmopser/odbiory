@@ -36,18 +36,19 @@ const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").repl
 function detect(path){const t=norm(path);
  let b=null;const mb=/(?:^|[^a-z0-9])(?:b|bud|budynek)\.?[ _-]?([127])(?![0-9])/.exec(t);if(mb)b=mb[1];
  let l=null;if(/ssp|sygnalizac|pozar/.test(t))l="ssp";else if(/teleinf|teletech|struktural|siec(?![a-z])|lan(?![a-z])/.test(t))l="tel";else if(/gniazd|gn(?![a-z])/.test(t))l="gn";else if(/oswietl|(?:^|[^a-z])os(?![a-z])/.test(t))l="os";else if(/trasy|trasa|koryt|(?:^|[^a-z])tk(?![a-z0-9])/.test(t))l="tk";else if(/odgrom|piorun|(?:^|[^a-z])od(?![a-z])/.test(t))l="od";else if(/schemat|rozdziel/.test(t))l="s2";
- let p=null;const mp=/(?:^|[^0-9a-z])(\d{1,2})\s?p(?![a-z0-9])/.exec(t);if(mp)p=+mp[1];
- return{b,l,p}}
+ let p=null,f=null;const mp=/(?:^|[^0-9a-z])(\d{1,2})\s?p(?![a-z0-9])/.exec(t)||/(?:^|[^0-9a-z])(\d{1,2})[ _.-]?pietro/.exec(t)||/pietro[ _.-]?(\d{1,2})(?![0-9])/.exec(t);if(mp)p=+mp[1];
+ else if(/parter/.test(t))p=0;else if(/poddasz/.test(t))f="Poddasze";else if(/(?:^|[^a-z])dach(?![a-z])/.test(t))f="Dach";
+ return{b,l,p,f}}
 async function key(pw,salt,iter){const b=await crypto.subtle.importKey("raw",te.encode(pw),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:iter,hash:"SHA-256"},b,{name:"AES-GCM",length:256},false,["encrypt"])}
 $("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files,...picked],a=$("p1").value;er.textContent="";
  if(!fs.length){er.textContent="Wybierz pliki lub folder";return}
  if(a.length<12){er.textContent="Hasło musi mieć co najmniej 12 znaków";return}
  if(a!==$("p2").value){er.textContent="Hasła się różnią";return}
- $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;const LN={ssp:"SSP (Śmietnik 1)",tel:"Teleinformatyka (Śmietnik 1)",gn:"Gniazda",os:"Oświetlenie",tk:"Trasy",od:"Odgromowa",s2:"Schematy2"};const warn=[];const dest=$("dest").value;
+ $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;const recs=[];const LN={ssp:"SSP (Śmietnik 1)",tel:"Teleinformatyka (Śmietnik 1)",gn:"Gniazda",os:"Oświetlenie",tk:"Trasy",od:"Odgromowa",s2:"Schematy2"};const warn=[];const dest=$("dest").value;
  try{const salt=crypto.getRandomValues(new Uint8Array(16)),iter=600000,k=await key(a,salt,iter);
   for(const f of fs){er.textContent="Szyfruję ("+(n+1)+"/"+fs.length+"): "+f.name+"…";
   const path=f.webkitRelativePath||f.name;let m={n:f.name,t:f.type||"application/octet-stream"},info="";
-  if(dest==="auto"){const d=detect(path);if(d.l&&d.b){m.l=d.l;m.b=d.b;if(d.p!=null)m.p=d.p;info=" → B"+d.b+" · "+LN[d.l]+(d.p!=null?" · "+d.p+"p":"")}else{info=" → Śmietnik 1"+(d.b?" (B"+d.b+")":"")+" – nie rozpoznano "+(d.b?"warstwy":"budynku")+" w: "+path;warn.push(path);if(d.b)m.b=d.b;if(d.p!=null)m.p=d.p}}
+  if(dest==="auto"){const d=detect(path);if(d.l&&d.b){m.l=d.l;m.b=d.b;if(d.p!=null)m.p=d.p;if(d.f)m.f=d.f;info=" → B"+d.b+" · "+LN[d.l]+(d.p!=null?" · "+d.p+"p":"")+(d.f?" · "+d.f:"")}else{info=" → Śmietnik 1"+(d.b?" (B"+d.b+")":"")+" – nie rozpoznano "+(d.b?"warstwy":"budynku")+" w: "+path;warn.push(path);if(d.b)m.b=d.b;if(d.p!=null)m.p=d.p}}
   else if(dest){m.l=dest;m.b=$("bld").value;const fl=$("flr").value.trim();if(fl)m.f=fl}
   const data=new Uint8Array(await f.arrayBuffer());
   const meta=te.encode(JSON.stringify(m));
@@ -55,9 +56,11 @@ $("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files,...picked],a=$("
   const iv=crypto.getRandomValues(new Uint8Array(12));
   const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},k,pl));
   const head=new Uint8Array(8+16+4+12);head.set(te.encode("ODBENC1\n"),0);head.set(salt,8);new DataView(head.buffer).setUint32(24,iter);head.set(iv,28);
-  const blob=new Blob([head,ct],{type:"application/octet-stream"});n++;
+  const blob=new Blob([head,ct],{type:"application/octet-stream"});recs.push(blob);n++;
   const l=document.createElement("a");l.href=URL.createObjectURL(blob);l.download="plik_"+stamp+"_"+String(n).padStart(3,"0")+".odbenc";l.textContent="⬇ "+l.download+"  ("+Math.round(blob.size/1024)+" KB)  "+path+info;$("out").appendChild(l)}
-  if(n>1){const all=document.createElement("button");all.textContent="Pobierz wszystkie ("+n+")";all.onclick=async()=>{for(const a2 of $("out").querySelectorAll("a")){a2.click();await new Promise(r=>setTimeout(r,350))}};$("out").prepend(all)}
+  if(n>1){const parts=[te.encode("ODBBUN1\n")];for(const r of recs){const h=new Uint8Array(4);new DataView(h.buffer).setUint32(0,r.size);parts.push(h,r)}
+   const bb=new Blob(parts,{type:"application/octet-stream"});const bl=document.createElement("a");bl.href=URL.createObjectURL(bb);bl.download="paczka_zbiorcza_"+stamp+".odbbun";bl.style.fontWeight="700";bl.textContent="⬇ JEDEN PLIK ZE WSZYSTKIM: "+bl.download+"  ("+Math.round(bb.size/1048576)+" MB, "+n+" plików) – tylko to wrzuć na iPada";$("out").prepend(bl)}
+  if(n>1){const all=document.createElement("button");all.textContent="Pobierz osobno ("+n+")";all.onclick=async()=>{for(const a2 of $("out").querySelectorAll("a")){a2.click();await new Promise(r=>setTimeout(r,350))}};$("out").prepend(all)}
   er.textContent="Gotowe: "+n+" plik(i)."+(warn.length?" Uwaga: "+warn.length+" plik(ów) bez rozpoznanej warstwy/budynku – importuj je w Śmietniku 1 (w Śmietniku 2 trafiłyby do aktualnie wybranej warstwy).":"")}
  catch(e){er.textContent="Błąd: "+(e.message||e)}
  $("go").disabled=false};
