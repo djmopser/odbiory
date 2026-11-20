@@ -453,9 +453,10 @@ function renderLayers(){
 }
 function renderFloors(){
   const c=$("floors");c.innerHTML="";
-  floorsOf(S.b).forEach(fl=>{const x=document.createElement("button");x.className="floor";x.textContent=fl.name;x.setAttribute("aria-pressed",String(fl.id===S.f));
+  const _fl=floorsOf(S.b),_od=S.l==="od";
+  (_od?_fl.slice(-1):_fl).forEach(fl=>{const x=document.createElement("button");x.className="floor";x.textContent=_od?"Dach":fl.name;x.setAttribute("aria-pressed",String(fl.id===S.f));
     x.onclick=()=>{if(fl.id!==S.f)go({f:fl.id})};c.appendChild(x)});
-  const a=document.createElement("button");a.className="floor add";a.textContent="＋ Piętro";a.onclick=addFloor;c.appendChild(a);
+  if(!_od){const a=document.createElement("button");a.className="floor add";a.textContent="＋ Piętro";a.onclick=addFloor;c.appendChild(a);}
   const sel=c.querySelector('[aria-pressed="true"]');if(sel)sel.scrollIntoView({block:"nearest",inline:"nearest"});
 }
 function renderChips(){
@@ -532,6 +533,7 @@ function go(ch,forced){
   if(ch.f){S.f=ch.f;LS.set("odb.f."+S.b,S.f)}
   if(ch.l){S.l=ch.l;LS.set("odb.l",S.l)}
   if(!floorsOf(S.b).some(z=>z.id===S.f))S.f=floorsOf(S.b)[0].id;
+  if(S.l==="od"){const _f=floorsOf(S.b);S.f=_f[_f.length-1].id}
   S.undo=[];updUndo();S.moving=null;
   subMarks();renderAll();loadSheet(view);
 }
