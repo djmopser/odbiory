@@ -3,14 +3,19 @@
 <style>
 body{font:16px -apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:24px auto;padding:0 16px;color:#18212b;background:#f4f6f8}
 h1{font-size:22px}label{display:block;margin:14px 0 4px;font-weight:600;font-size:14px}
-input[type=password],input[type=file]{width:100%;box-sizing:border-box;padding:10px;border:1px solid #bbb;border-radius:8px;font-size:16px;background:#fff}
+input[type=password],input[type=file],input[type=text],select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #bbb;border-radius:8px;font-size:16px;background:#fff}
 button{margin-top:16px;padding:12px 20px;border:0;border-radius:10px;background:#1f5fbf;color:#fff;font-weight:700;font-size:16px;cursor:pointer}
 button:disabled{opacity:.5}.m{font-size:13px;color:#5d6b78;line-height:1.45}#out a{display:block;margin:8px 0;padding:10px;background:#fff;border:1px solid #ccd;border-radius:8px;text-decoration:none;color:#1f5fbf;word-break:break-all}
 #err{color:#c0392b;font-size:14px;min-height:18px}
 </style></head><body>
 <h1>Szyfrator plików (AES-256)</h1>
-<p class="m">Ten plik działa w całości w Twojej przeglądarce, bez internetu i bez wysyłania czegokolwiek. Zaszyfrowane pliki (<b>.odbenc</b>) przenieś na iPada i otwórz w aplikacji: <b>Śmietnik → Importuj zaszyfrowane</b>. Nazwa i zawartość pliku są ukryte, widać tylko numer.</p>
+<p class="m">Ten plik działa w całości w Twojej przeglądarce, bez internetu i bez wysyłania czegokolwiek. Zaszyfrowane pliki (<b>.odbenc</b>) przenieś na iPada i otwórz w aplikacji: <b>Śmietnik 1 lub 2 → Importuj zaszyfrowane</b>. Nazwa i zawartość pliku są ukryte, widać tylko numer.</p>
 <label>Pliki do zaszyfrowania (PDF, zdjęcia…)</label><input type="file" id="f" multiple>
+<label>Dokąd w aplikacji (Śmietnik 2) – dla Śmietnika 1 zostaw „Śmietnik 1"</label>
+<select id="dest"><option value="">Śmietnik 1 (zwykły plik budynku)</option><option value="gn">Śmietnik 2 → Gniazda</option><option value="os">Śmietnik 2 → Oświetlenie</option><option value="tk">Śmietnik 2 → Trasy kablowe</option><option value="od">Śmietnik 2 → Instalacja odgromowa</option><option value="s2">Śmietnik 2 → Schematy2</option></select>
+<label>Budynek</label><select id="bld"><option>1</option><option>2</option><option>7</option></select>
+<label>Piętro / nazwa grupy (np. Parter, 1 piętro, Poddasze; dla Schematy2 można zostawić puste)</label><input type="text" id="flr" placeholder="np. Parter">
+<p class="m">Ustawienia dotyczą wszystkich plików z jednego szyfrowania. Dla różnych pięter/warstw uruchom szyfrowanie osobno.</p>
 <label>Hasło (min. 12 znaków; najlepiej 4–5 losowych słów)</label><input type="password" id="p1" autocomplete="new-password">
 <label>Powtórz hasło</label><input type="password" id="p2" autocomplete="new-password">
 <div id="err"></div><button id="go">Zaszyfruj</button>
@@ -27,7 +32,7 @@ $("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files],a=$("p1").value
  $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;
  try{for(const f of fs){er.textContent="Szyfruję: "+f.name+"…";
   const data=new Uint8Array(await f.arrayBuffer());
-  const meta=te.encode(JSON.stringify({n:f.name,t:f.type||"application/octet-stream"}));
+  const meta=te.encode(JSON.stringify({n:f.name,t:f.type||"application/octet-stream",l:$("dest").value||undefined,b:$("dest").value?$("bld").value:undefined,f:$("dest").value?$("flr").value.trim()||undefined:undefined}));
   const pl=new Uint8Array(4+meta.length+data.length);new DataView(pl.buffer).setUint32(0,meta.length);pl.set(meta,4);pl.set(data,4+meta.length);
   const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=600000;
   const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},await key(a,salt,iter),pl));

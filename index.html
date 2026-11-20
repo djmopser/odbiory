@@ -294,7 +294,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
   <header class="top">
     <div class="row">
       <div class="seg bld" id="bldSeg" role="group" aria-label="Budynek"><span class="cap">Bud.</span></div>
-      <button class="icon-btn" id="binBtn" aria-label="Śmietnik – zaszyfrowane pliki budynku" style="width:auto;padding:0 12px;gap:6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Śmietnik</button>
+      <button class="icon-btn" id="binBtn" aria-label="Śmietnik – zaszyfrowane pliki budynku" style="width:auto;padding:0 12px;gap:6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Śmietnik 1</button><button class="icon-btn" id="bin2Btn" aria-label="Śmietnik 2 – zaszyfrowane plany w warstwach" style="width:auto;padding:0 12px;gap:6px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Śmietnik 2</button>
       <div class="seg layer-seg" id="layerSeg" role="group" aria-label="Plan">
         <button data-l="el"><span class="dot"></span><span class="lbl">Gniazda</span></button>
         <button data-l="z" class="zbtn"><span class="dot"></span><span class="lbl">Z</span></button>
@@ -453,7 +453,7 @@ function pickBoard(){const bl=boardsOf(S.b);
 const where=()=>"Bud. "+S.b+" · "+floorName(S.b,S.f)+" · "+LAYERS[S.l];
 
 /* ---------- Top bar ---------- */
-function renderBld(){const bb=document.getElementById('binBtn');if(bb&&!bb.__w){bb.__w=1;bb.onclick=()=>openVault()}
+function renderBld(){const bb=document.getElementById('binBtn');if(bb&&!bb.__w){bb.__w=1;bb.onclick=()=>openVault(1);const b2=document.getElementById('bin2Btn');if(b2)b2.onclick=()=>openVault(2)}
   const seg=$("bldSeg");seg.querySelectorAll("button").forEach(b=>b.remove());
   BUILDINGS.forEach(b=>{const x=document.createElement("button");x.textContent=b;x.setAttribute("aria-pressed",String(b===S.b));x.setAttribute("aria-label","Budynek "+b);
     x.onclick=()=>{if(b!==S.b)go({b,f:LS.get("odb.f."+b,floorsOf(b)[0].id)})};seg.appendChild(x)});
@@ -1139,7 +1139,8 @@ $("menuBtn").onclick=()=>{
     (has?'<button class="ghost" id="exPdf">Pobierz PDF tego planu ze znacznikami</button>':'')+
     '<button class="ghost" id="exCsv">Pobierz listę punktów – Bud. '+S.b+' (CSV do Excela)</button>'+
     (window.__OFFLINE?'':'<button class="ghost" id="ipadIn">Wczytaj zmiany z iPada (plik)</button><button class="ghost" id="ipadOut">Pobierz paczkę dla iPada</button>')+
-    '<button class="ghost" id="vaultBtn">Śmietnik (pliki budynku, AES-256)</button>'+
+    '<button class="ghost" id="vaultBtn">Śmietnik 1 (pliki budynku, AES-256)</button>'+
+    '<button class="ghost" id="vault2Btn">Śmietnik 2 (zaszyfrowane plany w warstwach)</button>'+
     '<button class="ghost" id="syncBtn">Synchronizacja i kopia zapasowa</button>'+
     '<button class="ghost" id="zipAll">Pobierz dokumentację zdjęciową (ZIP, wszystkie budynki)</button>'+
     '<button class="ghost" id="swap">'+(has?"Podmień PDF dla tego planu":"Wgraj PDF dla tego planu")+'</button>'+
@@ -1154,7 +1155,8 @@ $("menuBtn").onclick=()=>{
   q("#swap").onclick=()=>{closeSheet();pickPdf()};
   q("#zipAll").onclick=()=>{closeSheet();zipDocs(BUILDINGS)};
   q("#syncBtn").onclick=()=>{closeSheet();openSync()};
-  q("#vaultBtn").onclick=()=>{closeSheet();openVault()};
+  q("#vaultBtn").onclick=()=>{closeSheet();openVault(1)};
+  q("#vault2Btn").onclick=()=>{closeSheet();openVault(2)};
   if(q("#ipadIn")){q("#ipadIn").onclick=()=>{closeSheet();claudePickPack()};q("#ipadOut").onclick=()=>{closeSheet();claudeExportDialog()}}
   q("#ef").onclick=editFloor;
   if(has){
@@ -1462,7 +1464,9 @@ async function openSync(){
    Everything is encrypted before it is written to IndexedDB: file bytes, file names, markers and notes.
    The key lives only in memory and is dropped when the vault locks.
    ====================================================================== */
-const VAULT={key:null,docs:null,view:null,idle:null,hid:null};
+const VAULT={key:null,docs:null,view:null,idle:null,hid:null,mode:1,l2:"gn",fl:"",ff:null};
+const V2L=[["gn","Gniazda"],["os","Oświetlenie"],["tk","Trasy kablowe"],["od","Odgromowa"],["s2","Schematy2"]];
+const vNat=(a,b)=>String(a||"").localeCompare(String(b||""),"pl",{numeric:true,sensitivity:"base"});
 const VITER=600000,VMIN=10;
 const _te=new TextEncoder(),_td=new TextDecoder();
 async function vKey(pw,salt,iter){const base=await crypto.subtle.importKey("raw",_te.encode(pw),"PBKDF2",false,["deriveKey"]);
@@ -1495,7 +1499,8 @@ function vShell(title,inner,back){
   d.querySelector("#vLock").onclick=()=>vLock();
   d.addEventListener("pointerdown",vTouch,true);return d}
 
-async function openVault(){
+async function openVault(mode){
+  if(mode)VAULT.mode=mode;
   vTouch();
   const meta=await vMeta();
   if(!meta)return vSetup();
@@ -1503,7 +1508,7 @@ async function openVault(){
   return vList()}
 
 function vSetup(){
-  const d=vShell("Śmietnik – utwórz hasło",'<p class="meta">Pliki w Śmietniku są szyfrowane algorytmem AES-256 i zostają tylko na tym urządzeniu. Nie trafiają do synchronizacji ani do kopii zapasowych.</p>'+
+  const d=vShell("Śmietnik "+VAULT.mode+" – utwórz hasło",'<p class="meta">Pliki w Śmietniku są szyfrowane algorytmem AES-256 i zostają tylko na tym urządzeniu. Nie trafiają do synchronizacji ani do kopii zapasowych.</p>'+
     '<p><b>Hasła nie da się odzyskać.</b> Jeśli je zapomnisz, dokumenty przepadną. Zapisz je w bezpiecznym miejscu (np. menedżerze haseł).</p>'+
     '<label class="lbl">Hasło (minimum '+VMIN+' znaków)</label><input type="password" id="vp1" autocomplete="new-password"><label class="lbl">Powtórz hasło</label><input type="password" id="vp2" autocomplete="new-password">'+
     '<p class="meta" id="vErr" style="color:#c0392b"></p><button class="primary" id="vGo" style="height:52px">Utwórz sejf</button>');
@@ -1520,7 +1525,7 @@ function vSetup(){
     catch(e){er.textContent="Nie udało się: "+(e.message||e);d.querySelector("#vGo").disabled=false}}}
 
 function vUnlock(meta){
-  const d=vShell("Śmietnik",'<label class="lbl">Hasło</label><input type="password" id="vp" autocomplete="current-password"><p class="meta" id="vErr" style="color:#c0392b"></p>'+
+  const d=vShell("Śmietnik "+VAULT.mode,'<label class="lbl">Hasło</label><input type="password" id="vp" autocomplete="current-password"><p class="meta" id="vErr" style="color:#c0392b"></p>'+
     '<button class="primary" id="vGo" style="height:52px">Odblokuj</button>'+
     '<details style="margin-top:18px"><summary class="meta">Nie pamiętam hasła</summary><p class="meta">Hasła nie da się odzyskać. Możesz usunąć cały sejf i zacząć od nowa, ale dokumenty zostaną skasowane bezpowrotnie.</p><button class="ghost danger" id="vWipe">Usuń sejf i wszystkie dokumenty</button></details>');
   d.querySelector("#vLock").hidden=true;
@@ -1535,23 +1540,40 @@ function vUnlock(meta){
   setTimeout(()=>d.querySelector("#vp").focus(),50)}
 
 async function vLoadDocs(B){
-  const keys=(await IDB.keys("vault")).filter(k=>String(k).startsWith("doc:"));const out=[];
-  for(const k of keys){const r=await IDB.get("vault",k);try{const nm=await vDecJson(VAULT.key,r.name);if(nm.b==null||String(nm.b)===String(B))out.push({id:r.id,name:nm.n,b:nm.b,type:r.type,size:r.size,created:r.created})}catch(e){}}
-  out.sort((a,b)=>b.created-a.created);return out}
+  const keys=(await IDB.keys("vault")).filter(k=>String(k).startsWith("doc:"));const out=[];const m2=VAULT.mode===2;
+  for(const k of keys){const r=await IDB.get("vault",k);try{const nm=await vDecJson(VAULT.key,r.name);
+    if(nm.b!=null&&String(nm.b)!==String(B))continue;
+    if(m2?(nm.l!==VAULT.l2):!!nm.l)continue;
+    out.push({id:r.id,name:nm.n,b:nm.b,l:nm.l,f:nm.f||"",type:r.type,size:r.size,created:r.created})}catch(e){}}
+  if(m2)out.sort((a,b)=>vNat(a.f,b.f)||vNat(a.name,b.name));else out.sort((a,b)=>vNat(a.f,b.f)||b.created-a.created);return out}
 
 async function vList(){
   const B=S.b;
-  const d=vShell("Śmietnik – budynek "+B,'<p class="meta">Pliki budynku '+B+' szyfrowane AES-256. Tylko to urządzenie – bez synchronizacji i kopii. Każdy budynek ma własną listę, hasło jest wspólne.</p><div class="btn-row"><label class="primary" for="vFile" role="button" style="height:52px;flex:1">Dodaj plik (PDF lub zdjęcie)</label><input type="file" id="vFile" class="vh" accept="application/pdf,.pdf,image/*" multiple><button class="ghost" id="vPw" style="height:52px">Zmień hasło</button></div><details class="more"><summary>Importuj zaszyfrowane pliki (.odbenc)</summary><p class="meta">Pliki zaszyfrowane Szyfratorem na komputerze. Podaj ich hasło, a potem wybierz pliki. Zostaną odszyfrowane tylko w pamięci i od razu zaszyfrowane hasłem Śmietnika.</p><label class="lbl">Hasło do plików .odbenc</label><input type="password" id="vIPw" autocomplete="off"><div class="btn-row"><label class="ghost" for="vImp" role="button" style="height:48px;display:flex;align-items:center;justify-content:center">Wybierz pliki .odbenc</label><input type="file" id="vImp" class="vh" accept=".odbenc,application/octet-stream" multiple></div><p class="meta" id="vIErr" style="color:#c0392b"></p></details><div id="vDocs"><p class="meta">Wczytuję…</p></div>');
+  if(VAULT.fb!==B){VAULT.fb=B;VAULT.ff=null;VAULT.fl=""}
+  const M2=VAULT.mode===2;
+  const d=vShell("Śmietnik "+VAULT.mode+" – budynek "+B,(M2?'<p class="meta">Zaszyfrowane plany budynku '+B+' w warstwach. Wpisz hasło raz – potem wybierasz warstwę, piętro i dokument z listy. Tylko to urządzenie.</p><div class="btn-row" id="v2L" style="flex-wrap:wrap">'+V2L.map(x=>'<button class="ghost v2l" data-l="'+x[0]+'" aria-pressed="'+(x[0]===VAULT.l2)+'" style="height:46px">'+x[1]+'</button>').join("")+'</div><input type="text" id="vSrch" placeholder="Szukaj na liście…" autocomplete="off">':'<p class="meta">Pliki budynku '+B+' szyfrowane AES-256. Tylko to urządzenie – bez synchronizacji i kopii. Każdy budynek ma własną listę, hasło jest wspólne.</p>')+'<div class="meta" style="font-weight:700">Piętro</div><div class="btn-row" id="vFl2" style="flex-wrap:wrap"></div><div class="btn-row"><label class="primary" for="vFile" role="button" style="height:52px;flex:1">Dodaj plik (PDF lub zdjęcie)</label><input type="file" id="vFile" class="vh" accept="application/pdf,.pdf,image/*" multiple><button class="ghost" id="vPw" style="height:52px">Zmień hasło</button></div><details class="more"><summary>Importuj zaszyfrowane pliki (.odbenc)</summary><p class="meta">Pliki zaszyfrowane Szyfratorem na komputerze. Podaj ich hasło, a potem wybierz pliki. Zostaną odszyfrowane tylko w pamięci i od razu zaszyfrowane hasłem Śmietnika.</p><label class="lbl">Hasło do plików .odbenc</label><input type="password" id="vIPw" autocomplete="off"><div class="btn-row"><label class="ghost" for="vImp" role="button" style="height:48px;display:flex;align-items:center;justify-content:center">Wybierz pliki .odbenc</label><input type="file" id="vImp" class="vh" accept=".odbenc,application/octet-stream" multiple></div><p class="meta" id="vIErr" style="color:#c0392b"></p></details><div id="vDocs"><p class="meta">Wczytuję…</p></div>');
   const box=d.querySelector("#vDocs");
-  const render=async()=>{VAULT.docs=await vLoadDocs(B);
-    box.innerHTML=VAULT.docs.length?VAULT.docs.map(x=>'<div class="vdoc" data-id="'+x.id+'"><button class="vopen"><b>'+esc(x.name)+'</b><span class="meta">'+(x.type==="application/pdf"?"PDF":"Obraz")+' · '+fmtSize(x.size)+' · '+fmtDate(x.created)+'</span></button><button class="ghost danger vdel" aria-label="Usuń">Usuń</button></div>').join(""):'<p class="meta" style="padding:12px 0">Brak plików dla tego budynku. Dodaj pierwszy plik.</p>'};
+  const row=x=>'<div class="vdoc" data-id="'+x.id+'"><button class="vopen"><b>'+esc(x.name)+'</b><span class="meta">'+(x.type==="application/pdf"?"PDF":"Obraz")+' · '+fmtSize(x.size)+' · '+fmtDate(x.created)+'</span></button><button class="ghost danger vdel" aria-label="Usuń">Usuń</button></div>';
+  const fnames=()=>{const a=floorsOf(B).map(z=>z.name);for(const x of VAULT.docs||[])if(x.f&&!a.includes(x.f))a.push(x.f);return a};
+  const drawFloors=()=>{const fb=d.querySelector("#vFl2");if(!fb)return;const names=fnames();
+    fb.innerHTML=[["Wszystkie",null]].concat(names.map(n=>[n,n])).map(([t,v])=>'<button class="ghost v2f" data-f="'+(v==null?"":"1")+'" data-n="'+esc(v||"")+'" aria-pressed="'+(VAULT.ff===v)+'" style="height:44px">'+esc(t)+'</button>').join("");
+    fb.querySelectorAll(".v2f").forEach(b=>b.onclick=()=>{VAULT.ff=b.dataset.f?b.dataset.n:null;VAULT.fl=VAULT.ff||"";render()})};
+  const render=async()=>{VAULT.docs=await vLoadDocs(B);drawFloors();let list=VAULT.docs;
+    if(VAULT.ff!=null)list=list.filter(x=>x.f===VAULT.ff);
+    if(M2){const q=(d.querySelector("#vSrch")||{}).value||"";const qq=q.trim().toLowerCase();if(qq)list=list.filter(x=>(x.name+" "+x.f).toLowerCase().includes(qq))}
+    if(!list.length){box.innerHTML='<p class="meta" style="padding:12px 0">'+(VAULT.ff!=null?"Brak plików na tym piętrze. Dodaj plik – trafi na wybrane piętro.":M2?"Brak dokumentów w tej warstwie dla tego budynku. Dodaj plik albo zaimportuj .odbenc.":"Brak plików dla tego budynku. Dodaj pierwszy plik.")+'</p>';return}
+    let h="",cur=null;for(const x of list){if(x.f!==cur){cur=x.f;h+='<h3 class="meta" style="margin:14px 0 4px;font-weight:700">'+esc(cur||"(bez piętra)")+'</h3>'}h+=row(x)}
+    box.innerHTML=h};
+  if(M2){d.querySelectorAll(".v2l").forEach(b=>b.onclick=()=>{VAULT.l2=b.dataset.l;d.querySelectorAll(".v2l").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));render()});
+    d.querySelector("#vSrch").oninput=render}
+  const vMetaFor=()=>M2?{b:B,l:VAULT.l2,f:VAULT.ff||""}:{b:B,f:VAULT.ff||""};
   await render();
   d.querySelector("#vFile").onchange=async e=>{
     const files=[...e.target.files];e.target.value="";
     for(const f of files){toast("Szyfruję: "+f.name,null,null,30000);
       try{const bytes=new Uint8Array(await f.arrayBuffer());const id="d"+uid()+uid();
         const type=f.type||(/\.pdf$/i.test(f.name)?"application/pdf":"application/octet-stream");
-        await IDB.put("vault","doc:"+id,{id,type,size:f.size,created:Date.now(),name:await vEncJson(VAULT.key,{n:f.name,b:B}),data:await vEnc(VAULT.key,bytes)});
+        await IDB.put("vault","doc:"+id,{id,type,size:f.size,created:Date.now(),name:await vEncJson(VAULT.key,Object.assign({n:f.name},vMetaFor())),data:await vEnc(VAULT.key,bytes)});
         await IDB.put("vault","marks:"+id,await vEncJson(VAULT.key,[]))}
       catch(er){toast("Nie dodano: "+(er.message||er),null,null,6000)}}
     toast("Zaszyfrowano i zapisano");vTouch();await render()};
@@ -1562,7 +1584,7 @@ async function vList(){
   d.querySelector("#vImp").onchange=async e=>{
     const files=[...e.target.files];e.target.value="";const pw=d.querySelector("#vIPw").value,er=d.querySelector("#vIErr");er.textContent="";
     if(!pw){er.textContent="Najpierw wpisz hasło do plików .odbenc";return}
-    let ok=0;
+    let ok=0,moved=0;
     for(const f of files){toast("Odszyfrowuję: "+f.name,null,null,60000);
       try{const raw=new Uint8Array(await f.arrayBuffer());
         if(_td.decode(raw.slice(0,8))!=="ODBENC1\n")throw new Error("to nie jest plik .odbenc");
@@ -1572,11 +1594,11 @@ async function vList(){
         try{pl=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},k,raw.slice(40)))}catch(x){throw new Error("złe hasło lub uszkodzony plik")}
         const ml=new DataView(pl.buffer,pl.byteOffset).getUint32(0);const meta=JSON.parse(_td.decode(pl.slice(4,4+ml)));const bytes=pl.slice(4+ml);
         const id="d"+uid()+uid();
-        await IDB.put("vault","doc:"+id,{id,type:meta.t||"application/octet-stream",size:bytes.length,created:Date.now(),name:await vEncJson(VAULT.key,{n:meta.n||f.name,b:B}),data:await vEnc(VAULT.key,bytes)});
+        await IDB.put("vault","doc:"+id,{id,type:meta.t||"application/octet-stream",size:bytes.length,created:Date.now(),name:await vEncJson(VAULT.key,meta.l?{n:meta.n||f.name,b:meta.b||B,l:meta.l,f:meta.f||""}:Object.assign({n:meta.n||f.name},vMetaFor(),meta.f?{f:meta.f}:{})),data:await vEnc(VAULT.key,bytes)});if(meta.l&&!M2)moved++;
         await IDB.put("vault","marks:"+id,await vEncJson(VAULT.key,[]));
         pl.fill(0);bytes.fill(0);raw.fill(0);ok++}
       catch(er2){er.textContent=f.name+": "+(er2.message||er2);break}}
-    if(ok)toast("Zaimportowano i zaszyfrowano: "+ok);else toast("Nic nie zaimportowano",null,null,2500);vTouch();await render()};
+    if(ok)toast("Zaimportowano i zaszyfrowano: "+ok+(moved?" (w tym "+moved+" do Śmietnika 2 – otwórz go, by je zobaczyć)":""),null,null,moved?7000:3000);else toast("Nic nie zaimportowano",null,null,2500);vTouch();await render()};
   d.querySelector("#vPw").onclick=vChangePw}
 
 async function vChangePw(){
