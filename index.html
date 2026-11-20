@@ -1464,7 +1464,7 @@ async function openSync(){
    Everything is encrypted before it is written to IndexedDB: file bytes, file names, markers and notes.
    The key lives only in memory and is dropped when the vault locks.
    ====================================================================== */
-const VAULT={key:null,docs:null,view:null,idle:null,hid:null,mode:1,l1:"ssp",l2:"gn",b:null,fl:"",ff:null};
+const VAULT={pw:null,key:null,docs:null,view:null,idle:null,hid:null,mode:1,l1:"ssp",l2:"gn",b:null,fl:"",ff:null};
 const V1L=[["ssp","Plan instalacji SSP"],["tel","Plan instalacji teleinformatycznej sieci strukturalnej"],["","Inne (bez kategorii)"]];
 const S1=new Set(["ssp","tel"]);
 const V2L=[["gn","Gniazda"],["os","Oświetlenie"],["tk","Trasy kablowe"],["od","Odgromowa"],["s2","Schematy2"]];
@@ -1482,17 +1482,18 @@ const vEncJson=(key,o)=>vEnc(key,_te.encode(JSON.stringify(o)));
 const vDecJson=async(key,rec)=>JSON.parse(_td.decode(await vDec(key,rec)));
 const vMeta=()=>IDB.get("vault","meta");
 function vLock(why){
-  VAULT.key=null;VAULT.docs=null;clearTimeout(VAULT.idle);clearTimeout(VAULT.hid);
+  VAULT.key=null;VAULT.pw=null;VAULT.docs=null;clearTimeout(VAULT.idle);clearTimeout(VAULT.hid);
   if(VAULT.view&&VAULT.view.url)try{URL.revokeObjectURL(VAULT.view.url)}catch(e){}
   if(VAULT.view&&VAULT.view.pdf)try{VAULT.view.pdf.destroy()}catch(e){}
   VAULT.view=null;
   const el=document.querySelector(".vault");if(el)el.remove();
   document.querySelectorAll("#overlay .sheet[data-vault],#overlay .scrim[data-vault]").forEach(x=>x.remove());
   if(why)toast(why,null,null,4000)}
-function vTouch(){clearTimeout(VAULT.idle);if(VAULT.key)VAULT.idle=setTimeout(()=>vLock("Śmietnik zablokowany po 10 minutach bez użycia"),10*60*1000)}
+const vIdleMin=()=>{const v=+LS.get("odb.vidle",120);return[10,30,60,120,240,480].includes(v)?v:120};
+function vTouch(){clearTimeout(VAULT.idle);if(VAULT.key)VAULT.idle=setTimeout(()=>vLock("Śmietnik zablokowany po "+vIdleMin()+" min bez użycia"),vIdleMin()*60*1000)}
 document.addEventListener("visibilitychange",()=>{
   if(!VAULT.key)return;
-  if(document.hidden){clearTimeout(VAULT.hid);VAULT.hid=setTimeout(()=>vLock("Śmietnik zablokowany"),120000)}
+  if(document.hidden){clearTimeout(VAULT.hid);VAULT.hid=setTimeout(()=>vLock("Śmietnik zablokowany"),Math.min(vIdleMin(),30)*60000)}
   else clearTimeout(VAULT.hid)});
 
 function vShell(title,inner,back){
@@ -1526,7 +1527,7 @@ function vSetup(){
     try{const salt=crypto.getRandomValues(new Uint8Array(16));const key=await vKey(a,salt,VITER);
       const check=await vEnc(key,_te.encode("odbiory-vault-v1"));
       await IDB.put("vault","meta",{v:1,salt,iter:VITER,check,created:Date.now()});
-      VAULT.key=key;vTouch();vList()}
+      VAULT.key=key;VAULT.pw=a;vTouch();vList()}
     catch(e){er.textContent="Nie udało się: "+(e.message||e);d.querySelector("#vGo").disabled=false}}}
 
 function vUnlock(meta){
@@ -1537,7 +1538,7 @@ function vUnlock(meta){
   const go=async()=>{const er=d.querySelector("#vErr");er.textContent="Sprawdzam…";
     try{const key=await vKey(d.querySelector("#vp").value,meta.salt,meta.iter);
       const t=_td.decode(await vDec(key,meta.check));if(t!=="odbiory-vault-v1")throw 0;
-      VAULT.key=key;vTouch();vList()}
+      VAULT.key=key;VAULT.pw=d.querySelector("#vp").value;vTouch();vList()}
     catch(e){er.textContent="Nieprawidłowe hasło";d.querySelector("#vp").select()}};
   d.querySelector("#vGo").onclick=go;d.querySelector("#vp").onkeydown=e=>{if(e.key==="Enter")go()};
   d.querySelector("#vWipe").onclick=async()=>{const b=d.querySelector("#vWipe");if(!b.dataset.c){b.dataset.c=1;b.textContent="Stuknij ponownie – dokumenty zostaną skasowane";return}
@@ -1556,7 +1557,7 @@ async function vList(){
   const B=VAULT.b||S.b;
   if(VAULT.fb!==B){VAULT.fb=B;VAULT.ff=null;VAULT.fl=""}
   const M2=VAULT.mode===2;
-  const d=vShell("Śmietnik "+VAULT.mode+" – budynek "+B,('<p class="meta">Szyfrowane AES-256, tylko to urządzenie – bez synchronizacji i kopii. Wybierz budynek, kategorię i piętro, potem dokument z listy.</p><div class="meta" style="font-weight:700">Budynek</div><div class="btn-row" id="vB" style="flex-wrap:wrap">'+(typeof BUILDINGS!=="undefined"?BUILDINGS:["1","2","7"]).map(x=>'<button class="ghost v2b" data-b="'+x+'" aria-pressed="'+(String(x)===String(B))+'" style="height:46px;min-width:56px">B'+x+'</button>').join("")+'</div><div class="meta" style="font-weight:700">Kategoria</div><div class="btn-row" id="v2L" style="flex-wrap:wrap">'+(M2?V2L:V1L).map(x=>'<button class="ghost v2l" data-l="'+x[0]+'" aria-pressed="'+(x[0]===(M2?VAULT.l2:VAULT.l1))+'" style="height:46px">'+x[1]+'</button>').join("")+'</div><input type="text" id="vSrch" placeholder="Szukaj na liście…" autocomplete="off">')+'<div class="meta" style="font-weight:700">Piętro</div><div class="btn-row" id="vFl2" style="flex-wrap:wrap"></div><div class="btn-row"><label class="primary" for="vFile" role="button" style="height:52px;flex:1">Dodaj plik (PDF lub zdjęcie)</label><input type="file" id="vFile" class="vh" accept="application/pdf,.pdf,image/*" multiple><button class="ghost" id="vPw" style="height:52px">Zmień hasło</button></div><details class="more"><summary>Importuj zaszyfrowane pliki (.odbenc)</summary><p class="meta">Pliki zaszyfrowane Szyfratorem na komputerze. Podaj ich hasło, a potem wybierz pliki. Zostaną odszyfrowane tylko w pamięci i od razu zaszyfrowane hasłem Śmietnika.</p><label class="lbl">Hasło do plików .odbenc</label><input type="password" id="vIPw" autocomplete="off"><div class="btn-row"><label class="ghost" for="vImp" role="button" style="height:48px;display:flex;align-items:center;justify-content:center">Wybierz plik .odbbun lub pliki .odbenc</label><input type="file" id="vImp" class="vh" accept=".odbenc,.odbbun,application/octet-stream" multiple></div><p class="meta" id="vIErr" style="color:#c0392b"></p></details><div id="vDocs"><p class="meta">Wczytuję…</p></div>');
+  const d=vShell("Śmietnik "+VAULT.mode+" – budynek "+B,('<p class="meta">Szyfrowane AES-256, tylko to urządzenie – bez synchronizacji i kopii. Wybierz budynek, kategorię i piętro, potem dokument z listy.</p><div class="btn-row" style="align-items:center"><span class="meta">Odblokowany na czas pracy – zablokuje się po bezczynności:</span><select id="vIdle" style="height:44px;font-size:16px">'+[10,30,60,120,240,480].map(m=>'<option value="'+m+'"'+(m===vIdleMin()?" selected":"")+'>'+(m<60?m+" min":m/60+" godz.")+'</option>').join("")+'</select></div><div class="meta" style="font-weight:700">Budynek</div><div class="btn-row" id="vB" style="flex-wrap:wrap">'+(typeof BUILDINGS!=="undefined"?BUILDINGS:["1","2","7"]).map(x=>'<button class="ghost v2b" data-b="'+x+'" aria-pressed="'+(String(x)===String(B))+'" style="height:46px;min-width:56px">B'+x+'</button>').join("")+'</div><div class="meta" style="font-weight:700">Kategoria</div><div class="btn-row" id="v2L" style="flex-wrap:wrap">'+(M2?V2L:V1L).map(x=>'<button class="ghost v2l" data-l="'+x[0]+'" aria-pressed="'+(x[0]===(M2?VAULT.l2:VAULT.l1))+'" style="height:46px">'+x[1]+'</button>').join("")+'</div><input type="text" id="vSrch" placeholder="Szukaj na liście…" autocomplete="off">')+'<div class="meta" style="font-weight:700">Piętro</div><div class="btn-row" id="vFl2" style="flex-wrap:wrap"></div><div class="btn-row"><label class="primary" for="vFile" role="button" style="height:52px;flex:1">Dodaj plik (PDF lub zdjęcie)</label><input type="file" id="vFile" class="vh" accept="application/pdf,.pdf,image/*" multiple><button class="ghost" id="vPw" style="height:52px">Zmień hasło</button></div><details class="more"><summary>Importuj zaszyfrowane pliki (.odbenc)</summary><p class="meta">Pliki zaszyfrowane Szyfratorem na komputerze. Podaj ich hasło, a potem wybierz pliki. Zostaną odszyfrowane tylko w pamięci i od razu zaszyfrowane hasłem Śmietnika.</p><label class="lbl">Hasło do plików .odbenc (zostaw puste, jeśli zaszyfrowałeś je tym samym hasłem co Śmietnik)</label><input type="password" id="vIPw" autocomplete="off"><div class="btn-row"><label class="ghost" for="vImp" role="button" style="height:48px;display:flex;align-items:center;justify-content:center">Wybierz plik .odbbun lub pliki .odbenc</label><input type="file" id="vImp" class="vh" accept=".odbenc,.odbbun,application/octet-stream" multiple></div><p class="meta" id="vIErr" style="color:#c0392b"></p></details><div id="vDocs"><p class="meta">Wczytuję…</p></div>');
   const box=d.querySelector("#vDocs");
   const row=x=>'<div class="vdoc" data-id="'+x.id+'"><button class="vopen"><b>'+esc(x.name)+'</b><span class="meta">'+(x.type==="application/pdf"?"PDF":"Obraz")+' · '+fmtSize(x.size)+' · '+fmtDate(x.created)+'</span></button><button class="ghost danger vdel" aria-label="Usuń">Usuń</button></div>';
   const fnames=()=>{const a=floorsOf(B).map(z=>z.name);for(const x of VAULT.docs||[])if(x.f&&!a.includes(x.f))a.push(x.f);return a};
@@ -1570,6 +1571,7 @@ async function vList(){
     let h="",cur=null;for(const x of list){if(x.f!==cur){cur=x.f;h+='<h3 class="meta" style="margin:14px 0 4px;font-weight:700">'+esc(cur||"(bez piętra)")+'</h3>'}h+=row(x)}
     box.innerHTML=h};
   d.querySelectorAll(".v2l").forEach(b=>b.onclick=()=>{VAULT[M2?"l2":"l1"]=b.dataset.l;d.querySelectorAll(".v2l").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));render()});
+  d.querySelector("#vIdle").onchange=e=>{LS.set("odb.vidle",+e.target.value);vTouch();toast("Blokada po "+e.target.selectedOptions[0].textContent+" bezczynności")};
   d.querySelectorAll(".v2b").forEach(b=>b.onclick=()=>{VAULT.b=b.dataset.b;vList()});
   d.querySelector("#vSrch").oninput=render
   const vMetaFor=()=>{const l=M2?VAULT.l2:VAULT.l1;return l?{b:B,l,f:VAULT.ff||""}:{b:B,f:VAULT.ff||""}};
@@ -1588,8 +1590,8 @@ async function vList(){
       await IDB.del("vault","doc:"+id);await IDB.del("vault","marks:"+id);await render();return}
     if(e.target.closest(".vopen"))vOpenDoc(id)};
   d.querySelector("#vImp").onchange=async e=>{
-    const files=[...e.target.files];e.target.value="";const pw=d.querySelector("#vIPw").value,er=d.querySelector("#vIErr");er.textContent="";
-    if(!pw){er.textContent="Najpierw wpisz hasło do plików .odbenc";return}
+    const files=[...e.target.files];e.target.value="";const pw=d.querySelector("#vIPw").value||VAULT.pw,er=d.querySelector("#vIErr");er.textContent="";
+    if(!pw){er.textContent="Wpisz hasło do plików .odbenc";return}
     let ok=0,moved=0;
     const units=[];
     for(const f0 of files){const head=_td.decode(new Uint8Array(await f0.slice(0,8).arrayBuffer()));
