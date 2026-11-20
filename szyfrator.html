@@ -11,10 +11,12 @@ button:disabled{opacity:.5}.m{font-size:13px;color:#5d6b78;line-height:1.45}#out
 <h1>Szyfrator plików (AES-256)</h1>
 <p class="m">Ten plik działa w całości w Twojej przeglądarce, bez internetu i bez wysyłania czegokolwiek. Zaszyfrowane pliki (<b>.odbenc</b>) przenieś na iPada i otwórz w aplikacji: <b>Śmietnik 1 lub 2 → Importuj zaszyfrowane</b>. Nazwa i zawartość pliku są ukryte, widać tylko numer.</p>
 <label>Pliki do zaszyfrowania (PDF, zdjęcia…)</label><input type="file" id="f" multiple>
+<label>…albo cały folder (np. z podfolderami B1, B2, B7)</label><input type="file" id="fd" webkitdirectory multiple>
 <label>Dokąd w aplikacji (Śmietnik 2) – dla Śmietnika 1 zostaw „Śmietnik 1"</label>
-<select id="dest"><option value="">Śmietnik 1 (zwykły plik budynku)</option><option value="gn">Śmietnik 2 → Gniazda</option><option value="os">Śmietnik 2 → Oświetlenie</option><option value="tk">Śmietnik 2 → Trasy kablowe</option><option value="od">Śmietnik 2 → Instalacja odgromowa</option><option value="s2">Śmietnik 2 → Schematy2</option></select>
+<select id="dest"><option value="auto">AUTOMATYCZNIE z nazwy pliku / folderu (zalecane)</option><option value="">Śmietnik 1 (zwykły plik budynku)</option><option value="gn">Śmietnik 2 → Gniazda</option><option value="os">Śmietnik 2 → Oświetlenie</option><option value="tk">Śmietnik 2 → Trasy kablowe</option><option value="od">Śmietnik 2 → Instalacja odgromowa</option><option value="s2">Śmietnik 2 → Schematy2</option></select>
 <label>Budynek</label><select id="bld"><option>1</option><option>2</option><option>7</option></select>
 <label>Piętro / nazwa grupy (opcjonalnie – jeśli nazwa pliku zawiera 0p, 1p, 2p… aplikacja sama ustawi piętro: 0p = parter, 1p = piętro 1, 2p = piętro 2)</label><input type="text" id="flr" placeholder="np. Parter">
+<p class="m"><b>Tryb automatyczny:</b> budynek, warstwa i piętro są odczytywane z nazwy pliku lub ścieżki folderu. Budynek: <b>B1</b>, <b>B2</b>, <b>B7</b> (np. folder „B1" albo „B1_…" w nazwie). Warstwa: słowa <b>gniazda</b>, <b>oswietlenie</b>, <b>trasy</b> (lub koryta/TK), <b>odgrom</b>, <b>schemat</b>. Piętro: <b>0p</b> parter, <b>1p</b> piętro 1, <b>2p</b> piętro 2… Przykład: <i>B1/Gniazda/B1_gniazda_1p.pdf</i>. Pliki bez rozpoznanej warstwy zostaną wypisane – importuj je w Śmietniku 1. Ręczne ustawienia poniżej działają dla pozostałych trybów.</p>
 <p class="m">Ustawienia dotyczą wszystkich plików z jednego szyfrowania. Dla różnych pięter/warstw uruchom szyfrowanie osobno.</p>
 <label>Hasło (min. 12 znaków; najlepiej 4–5 losowych słów)</label><input type="password" id="p1" autocomplete="new-password">
 <label>Powtórz hasło</label><input type="password" id="p2" autocomplete="new-password">
@@ -23,23 +25,34 @@ button:disabled{opacity:.5}.m{font-size:13px;color:#5d6b78;line-height:1.45}#out
 <p class="m">Algorytm: AES-256-GCM, klucz z hasła przez PBKDF2-SHA256 (600 000 iteracji). Hasła nie da się odzyskać. Po zaszyfrowaniu usuń oryginały i opróżnij kosz.</p>
 <script>
 const te=new TextEncoder();
-async function key(pw,salt,iter){const b=await crypto.subtle.importKey("raw",te.encode(pw),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:iter,hash:"SHA-256"},b,{name:"AES-GCM",length:256},false,["encrypt"])}
 const $=id=>document.getElementById(id);
-$("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files],a=$("p1").value;er.textContent="";
- if(!fs.length){er.textContent="Wybierz pliki";return}
+const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l").replace(/Ł/g,"L").toLowerCase();
+function detect(path){const t=norm(path);
+ let b=null;const mb=/(?:^|[^a-z0-9])(?:b|bud|budynek)[ _-]?([127])(?![0-9])/.exec(t);if(mb)b=mb[1];
+ let l=null;if(/gniazd|gn(?![a-z])/.test(t))l="gn";else if(/oswietl|(?:^|[^a-z])os(?![a-z])/.test(t))l="os";else if(/trasy|trasa|koryt|(?:^|[^a-z])tk(?![a-z0-9])/.test(t))l="tk";else if(/odgrom|piorun|(?:^|[^a-z])od(?![a-z])/.test(t))l="od";else if(/schemat|rozdziel/.test(t))l="s2";
+ let p=null;const mp=/(?:^|[^0-9a-z])(\d{1,2})\s?p(?![a-z0-9])/.exec(t);if(mp)p=+mp[1];
+ return{b,l,p}}
+async function key(pw,salt,iter){const b=await crypto.subtle.importKey("raw",te.encode(pw),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:iter,hash:"SHA-256"},b,{name:"AES-GCM",length:256},false,["encrypt"])}
+$("go").onclick=async()=>{const er=$("err"),fs=[...$("f").files,...$("fd").files],a=$("p1").value;er.textContent="";
+ if(!fs.length){er.textContent="Wybierz pliki lub folder";return}
  if(a.length<12){er.textContent="Hasło musi mieć co najmniej 12 znaków";return}
  if(a!==$("p2").value){er.textContent="Hasła się różnią";return}
- $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;
- try{for(const f of fs){er.textContent="Szyfruję: "+f.name+"…";
+ $("go").disabled=true;$("out").innerHTML="";const stamp=Date.now().toString(36);let n=0;const LN={gn:"Gniazda",os:"Oświetlenie",tk:"Trasy",od:"Odgromowa",s2:"Schematy2"};const warn=[];const dest=$("dest").value;
+ try{const salt=crypto.getRandomValues(new Uint8Array(16)),iter=600000,k=await key(a,salt,iter);
+  for(const f of fs){er.textContent="Szyfruję ("+(n+1)+"/"+fs.length+"): "+f.name+"…";
+  const path=f.webkitRelativePath||f.name;let m={n:f.name,t:f.type||"application/octet-stream"},info="";
+  if(dest==="auto"){const d=detect(path);if(d.l&&d.b){m.l=d.l;m.b=d.b;if(d.p!=null)m.p=d.p;info=" → B"+d.b+" · "+LN[d.l]+(d.p!=null?" · "+d.p+"p":"")}else{info=" → Śmietnik 1"+(d.b?" (B"+d.b+")":"")+" – nie rozpoznano "+(d.b?"warstwy":"budynku")+" w: "+path;warn.push(path);if(d.b)m.b=d.b;if(d.p!=null)m.p=d.p}}
+  else if(dest){m.l=dest;m.b=$("bld").value;const fl=$("flr").value.trim();if(fl)m.f=fl}
   const data=new Uint8Array(await f.arrayBuffer());
-  const meta=te.encode(JSON.stringify({n:f.name,t:f.type||"application/octet-stream",l:$("dest").value||undefined,b:$("dest").value?$("bld").value:undefined,f:$("dest").value?$("flr").value.trim()||undefined:undefined}));
+  const meta=te.encode(JSON.stringify(m));
   const pl=new Uint8Array(4+meta.length+data.length);new DataView(pl.buffer).setUint32(0,meta.length);pl.set(meta,4);pl.set(data,4+meta.length);
-  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=600000;
-  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},await key(a,salt,iter),pl));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},k,pl));
   const head=new Uint8Array(8+16+4+12);head.set(te.encode("ODBENC1\n"),0);head.set(salt,8);new DataView(head.buffer).setUint32(24,iter);head.set(iv,28);
   const blob=new Blob([head,ct],{type:"application/octet-stream"});n++;
-  const l=document.createElement("a");l.href=URL.createObjectURL(blob);l.download="plik_"+stamp+"_"+String(n).padStart(3,"0")+".odbenc";l.textContent="⬇ "+l.download+"  ("+Math.round(blob.size/1024)+" KB)";$("out").appendChild(l)}
-  er.textContent="Gotowe: "+n+" plik(i). Pobierz każdy z listy poniżej."}
+  const l=document.createElement("a");l.href=URL.createObjectURL(blob);l.download="plik_"+stamp+"_"+String(n).padStart(3,"0")+".odbenc";l.textContent="⬇ "+l.download+"  ("+Math.round(blob.size/1024)+" KB)  "+path+info;$("out").appendChild(l)}
+  if(n>1){const all=document.createElement("button");all.textContent="Pobierz wszystkie ("+n+")";all.onclick=async()=>{for(const a2 of $("out").querySelectorAll("a")){a2.click();await new Promise(r=>setTimeout(r,350))}};$("out").prepend(all)}
+  er.textContent="Gotowe: "+n+" plik(i)."+(warn.length?" Uwaga: "+warn.length+" plik(ów) bez rozpoznanej warstwy/budynku – importuj je w Śmietniku 1 (w Śmietniku 2 trafiłyby do aktualnie wybranej warstwy).":"")}
  catch(e){er.textContent="Błąd: "+(e.message||e)}
  $("go").disabled=false};
 </script></body></html>

@@ -1597,7 +1597,7 @@ async function vList(){
         try{pl=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},k,raw.slice(40)))}catch(x){throw new Error("złe hasło lub uszkodzony plik")}
         const ml=new DataView(pl.buffer,pl.byteOffset).getUint32(0);const meta=JSON.parse(_td.decode(pl.slice(4,4+ml)));const bytes=pl.slice(4+ml);
         const id="d"+uid()+uid();
-        await IDB.put("vault","doc:"+id,{id,type:meta.t||"application/octet-stream",size:bytes.length,created:Date.now(),name:await vEncJson(VAULT.key,(()=>{const bb=meta.b||B,fn=vFloorFromName(meta.n||f.name,bb);return meta.l?{n:meta.n||f.name,b:bb,l:meta.l,f:fn||meta.f||""}:Object.assign({n:meta.n||f.name},vMetaFor(),fn?{f:fn}:(meta.f?{f:meta.f}:{}))})()),data:await vEnc(VAULT.key,bytes)});if(meta.l&&!M2)moved++;
+        await IDB.put("vault","doc:"+id,{id,type:meta.t||"application/octet-stream",size:bytes.length,created:Date.now(),name:await vEncJson(VAULT.key,(()=>{const bb=meta.b||B,fn=vFloorFromName(meta.n||f.name,bb)||(meta.p!=null&&floorsOf(bb)[meta.p]?floorsOf(bb)[meta.p].name:null);return meta.l?{n:meta.n||f.name,b:bb,l:meta.l,f:fn||meta.f||""}:Object.assign({n:meta.n||f.name},vMetaFor(),fn?{f:fn}:(meta.f?{f:meta.f}:{}))})()),data:await vEnc(VAULT.key,bytes)});if(meta.l&&!M2)moved++;
         await IDB.put("vault","marks:"+id,await vEncJson(VAULT.key,[]));
         pl.fill(0);bytes.fill(0);raw.fill(0);ok++}
       catch(er2){er.textContent=f.name+": "+(er2.message||er2);break}}
