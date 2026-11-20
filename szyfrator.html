@@ -34,7 +34,7 @@ $("fd").onchange=e=>{const have=new Set(picked.map(pkey));for(const f of e.targe
 $("clrf").onclick=()=>{picked=[];showPicked()};
 const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l").replace(/Ł/g,"L").toLowerCase();
 function detect(path){const t=norm(path);
- let b=null;const mb=/(?:^|[^a-z0-9])(?:b|bud|budynek)\.?[ _-]?([127])(?![0-9])/.exec(t);if(mb)b=mb[1];
+ let b=null;const mb=/(?:^|[^a-z0-9])(?:b|bud|budynek)\.?[ _-]?(?:nr\.?)?[ _-]?([127])(?![0-9])/.exec(t)||/(?:^|\/)([127])(?=\/)/.exec(t);if(mb)b=mb[1];
  let l=null;if(/ssp|sygnalizac|pozar/.test(t))l="ssp";else if(/teleinf|teletech|struktural|siec(?![a-z])|lan(?![a-z])/.test(t))l="tel";else if(/gniazd|gn(?![a-z])/.test(t))l="gn";else if(/oswietl|(?:^|[^a-z])os(?![a-z])/.test(t))l="os";else if(/trasy|trasa|koryt|(?:^|[^a-z])tk(?![a-z0-9])/.test(t))l="tk";else if(/odgrom|piorun|(?:^|[^a-z])od(?![a-z])/.test(t))l="od";else if(/schemat|rozdziel/.test(t))l="s2";
  let p=null,f=null;const mp=/(?:^|[^0-9a-z])(\d{1,2})\s?p(?![a-z0-9])/.exec(t)||/(?:^|[^0-9a-z])(\d{1,2})[ _.-]?pietro/.exec(t)||/pietro[ _.-]?(\d{1,2})(?![0-9])/.exec(t);if(mp)p=+mp[1];
  else if(/parter/.test(t))p=0;else if(/poddasz/.test(t))f="Poddasze";else if(/(?:^|[^a-z])dach(?![a-z])/.test(t))f="Dach";
