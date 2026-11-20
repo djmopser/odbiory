@@ -15,7 +15,7 @@
 /* Layout: full-screen plan viewer. Top: building / layer switch, floor strip, counters. Bottom: big tool dock for one-thumb use on site */
 :root{
   --bg:#eef1f4; --panel:#ffffff; --ink:#18212b; --muted:#5d6b78; --line:#cfd6dd;
-  --accent:#1f5fbf; --accent-ink:#ffffff; --el:#1f5fbf; --sw:#b07800; --zl:#0f7b72; --tk:#7a3fd0; --od:#c2410c; --sheet-shadow:0 -8px 30px rgba(15,25,40,.18);
+  --accent:#1f5fbf; --accent-ink:#ffffff; --el:#1f5fbf; --sw:#b07800; --zl:#0f7b72; --tk:#7a3fd0; --od:#c2410c; --rz:#0e7490; --sheet-shadow:0 -8px 30px rgba(15,25,40,.18);
   --paper:#ffffff;
   /* Marker colors sit on the white plan paper, so they stay the same in both themes */
   --k-done:#1d8a3e; --k-peszel:#e06a00; --k-czujka:#d22b2b; --k-rop:#b30f1f; --k-syg:#7a3fd0; --k-inne:#1f6fd1;
@@ -24,10 +24,10 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#11161c; --panel:#1a2129; --ink:#e7edf3; --muted:#9aa8b5; --line:#2e3944;
-  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --tk:#b48cff; --od:#fb923c; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}}
+  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --tk:#b48cff; --od:#fb923c; --rz:#22d3ee; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#11161c; --panel:#1a2129; --ink:#e7edf3; --muted:#9aa8b5; --line:#2e3944;
-  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --tk:#b48cff; --od:#fb923c; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}
+  --accent:#5b9bff; --accent-ink:#0b1320; --el:#5b9bff; --sw:#f0b429; --zl:#2bb3a6; --tk:#b48cff; --od:#fb923c; --rz:#22d3ee; --sheet-shadow:0 -8px 30px rgba(0,0,0,.5); --paper:#f4f4f2; color-scheme:dark}
 [hidden]{display:none!important}
 .vh{position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
 label.ghost,label.primary{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-sizing:border-box;-webkit-user-select:none;user-select:none}
@@ -56,6 +56,7 @@ button{cursor:pointer}
 .layer-seg button[data-l="sw"] .dot{background:var(--sw)}
 .layer-seg button[data-l="tk"] .dot{background:var(--tk)}
 .layer-seg button[data-l="od"] .dot{background:var(--od)}
+.layer-seg button[data-l="rz"] .dot{background:var(--rz)}
 .layer-seg button[data-l="z"] .dot{background:var(--zl)}
 .layer-seg button.zbtn{flex:0 0 auto;padding:0 14px}
 .layer-seg button[aria-pressed="true"][data-l="z"]{background:var(--zl);color:#fff}
@@ -64,6 +65,8 @@ button{cursor:pointer}
 .layer-seg button[aria-pressed="true"][data-l="sw"]{background:var(--sw);color:#1a1300}
 .layer-seg button[aria-pressed="true"][data-l="tk"]{background:var(--tk);color:#fff}
 .layer-seg button[aria-pressed="true"][data-l="od"]{background:var(--od);color:#fff}
+.layer-seg button[aria-pressed="true"][data-l="rz"]{background:var(--rz);color:#fff}
+.floor.board{max-width:none;font-weight:700}
 .layer-seg button[aria-pressed="true"] .dot{background:currentColor}
 .layer-seg button.nofile{opacity:.5}
 .icon-btn{height:40px;min-width:40px;border:1px solid var(--line);border-radius:8px;background:var(--bg);display:grid;place-items:center;padding:0 10px;font-weight:600;flex:none}
@@ -298,6 +301,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
         <button data-l="sw"><span class="dot"></span><span class="lbl">Oświetl.</span></button>
         <button data-l="tk"><span class="dot"></span><span class="lbl">Trasy kabl.</span></button>
         <button data-l="od"><span class="dot"></span><span class="lbl">Odgrom.</span></button>
+        <button data-l="rz"><span class="dot"></span><span class="lbl">Rozdz.</span></button>
       </div>
     </div>
     <div class="row">
@@ -340,10 +344,10 @@ details.more summary{cursor:pointer;color:var(--muted);font-weight:600;font-size
 "use strict";
 const $=id=>document.getElementById(id);
 const BUILDINGS=["1","2","7"];
-const LAYERS={el:"Gniazda",z:"Z",sw:"Oświetlenie",tk:"Trasy kablowe",od:"Instalacja odgromowa"};
-const LAYER_SHORT={el:"G",z:"Z",sw:"O",tk:"T",od:"P"};
+const LAYERS={el:"Gniazda",z:"Z",sw:"Oświetlenie",tk:"Trasy kablowe",od:"Instalacja odgromowa",rz:"Rozdzielnice"};
+const LAYER_SHORT={el:"G",z:"Z",sw:"O",tk:"T",od:"P",rz:"R"};
 /* Z is a second set of marks drawn on the sockets (Gniazda) drawing */
-const SHEET_OF={el:"el",z:"el",sw:"sw",tk:"tk",od:"od"};
+const SHEET_OF={el:"el",z:"el",sw:"sw",tk:"tk",od:"od",rz:"rz"};
 /* Extras at a spot where the plan shows an element stay on that plan; extras where the plan shows nothing belong on Z (moved with one tap) */
 const EXTRA_KINDS=new Set(["peszel","czujka","rop","syg","inne"]);
 function inLayer(m,l){return m.layer===l}
@@ -438,7 +442,14 @@ const S={store:null,assets:null,downloads:null,floors:null,sheets:{},marks:{},un
 const floorsOf=b=>(S.floors&&S.floors[b])||DEFAULT_FLOORS;
 const sheetId=(b,f,l)=>"b"+b+"_"+f+"_"+(SHEET_OF[l]||l);
 const curSheetId=()=>sheetId(S.b,S.f,S.l);
-const floorName=(b,f)=>{const x=floorsOf(b).find(z=>z.id===f);return x?x.name:"?"};
+const floorName=(b,f)=>{const x=floorsOf(b).find(z=>z.id===f);if(x)return x.name;const r=boardsOf(b).find(z=>z.f===f);return r?"Rozdz. "+r.label:"?"};
+/* Switchboards (Rozdzielnice): one schematic PDF per board, listed alphabetically */
+function boardsOf(b){return Object.values(S.sheets||{}).filter(x=>x&&x.layer==="rz"&&String(x.building)===String(b)).map(x=>({f:x.floorId,label:x.label||x.name||x.floorId,sym:x.sym||""})).sort((a,c)=>a.label.localeCompare(c.label,"pl",{numeric:true,sensitivity:"base"}))}
+function pickBoard(){const bl=boardsOf(S.b);
+  const sh=openSheet('<h2>Rozdzielnice – budynek '+S.b+'</h2><p class="meta">Lista alfabetyczna ('+bl.length+'). Wybierz rozdzielnicę, żeby zobaczyć jej schemat.</p><input type="text" id="rzq" placeholder="Szukaj (np. T11, TK, RG)" autocomplete="off"><div class="pgrid" id="rzg" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))"></div>');
+  const g=sh.querySelector("#rzg"),q=sh.querySelector("#rzq");
+  const draw=()=>{g.innerHTML="";const t=q.value.trim().toLowerCase();bl.filter(x=>!t||x.label.toLowerCase().includes(t)).forEach(x=>{const b=document.createElement("button");b.textContent=x.label;b.style.fontSize="15px";b.style.height="52px";if(x.f===S.f){b.style.background="var(--rz)";b.style.color="#fff"}b.onclick=()=>{closeSheet();go({f:x.f})};g.appendChild(b)});if(!g.children.length)g.innerHTML='<p class="meta">Brak wyników</p>'};
+  q.oninput=draw;draw()}
 const where=()=>"Bud. "+S.b+" · "+floorName(S.b,S.f)+" · "+LAYERS[S.l];
 
 /* ---------- Top bar ---------- */
@@ -453,6 +464,12 @@ function renderLayers(){
 }
 function renderFloors(){
   const c=$("floors");c.innerHTML="";
+  if(S.l==="rz"){const bl=boardsOf(S.b),i=bl.findIndex(x=>x.f===S.f);
+    const mk=(t,fn,dis,lab)=>{const x=document.createElement("button");x.className="floor";x.textContent=t;x.disabled=!!dis;if(lab)x.setAttribute("aria-label",lab);x.onclick=fn;return x};
+    c.appendChild(mk("‹",()=>go({f:bl[i-1].f}),i<=0,"Poprzednia rozdzielnica"));
+    const m=mk((i>=0?bl[i].label:"Wybierz rozdzielnicę")+" ▾",pickBoard,!bl.length);m.classList.add("board");m.setAttribute("aria-pressed","true");c.appendChild(m);
+    c.appendChild(mk("›",()=>go({f:bl[i+1].f}),i<0||i>=bl.length-1,"Następna rozdzielnica"));
+    const n=document.createElement("span");n.className="meta";n.style.alignSelf="center";n.textContent=bl.length?(i+1)+" / "+bl.length+" · alfabetycznie":"brak rozdzielnic";c.appendChild(n);return}
   const _fl=floorsOf(S.b),_od=S.l==="od";
   (_od?_fl.slice(-1):_fl).forEach(fl=>{const x=document.createElement("button");x.className="floor";x.textContent=_od?"Dach":fl.name;x.setAttribute("aria-pressed",String(fl.id===S.f));
     x.onclick=()=>{if(fl.id!==S.f)go({f:fl.id})};c.appendChild(x)});
@@ -468,7 +485,7 @@ function renderChips(){
     b.onclick=()=>{S.hidden.has(k)?S.hidden.delete(k):S.hidden.add(k);LS.set("odb.hidden",[...S.hidden]);renderChips();renderMarks()};c.appendChild(b)});
   {const n=Object.values(S.marks).filter(m=>m.kind==="room").length;const g=document.createElement("button");g.className="chip ghost-t";g.setAttribute("aria-pressed",String(S.showRooms));
     g.textContent=(S.showRooms?"✓ ":"")+"Pomieszczenia ("+n+")";g.onclick=()=>{S.showRooms=!S.showRooms;LS.set("odb.rooms",S.showRooms);renderChips();renderMarks()};c.appendChild(g)}
-  Object.keys(LAYERS).filter(l=>l!==S.l).forEach(l=>{
+  Object.keys(LAYERS).filter(l=>l!==S.l&&l!=="od"&&l!=="rz").forEach(l=>{
     const g=document.createElement("button");g.className="chip ghost-t";const on=S.ghost.has(l);g.setAttribute("aria-pressed",String(on));
     const n=Object.values(S.marks).filter(m=>m.layer===l).length;
     g.textContent=(on?"✓ ":"")+"Pokaż "+LAYERS[l]+" ("+n+")";g.title="Pokaż półprzezroczyste znaczniki z planu "+LAYERS[l];
@@ -528,16 +545,21 @@ function applyView(view){
 }
 function go(ch,forced){
   /* Keep the same place on the building when switching plan, floor or building: all sheets share building coordinates */
-  const view=forced||captureView()||S.lastView||LS.get("odb.view",null);if(view)S.lastView=view;
+  let view=forced||captureView()||S.lastView||LS.get("odb.view",null);if(view)S.lastView=view;
+  const wasRz=S.l==="rz";
   if(ch.b){S.b=ch.b;LS.set("odb.b",S.b)}
-  if(ch.f){S.f=ch.f;LS.set("odb.f."+S.b,S.f)}
+  if(ch.f){S.f=ch.f;if(!String(S.f).startsWith("x_"))LS.set("odb.f."+S.b,S.f)}
   if(ch.l){S.l=ch.l;LS.set("odb.l",S.l)}
-  if(!floorsOf(S.b).some(z=>z.id===S.f))S.f=floorsOf(S.b)[0].id;
+  if(S.l==="rz"){const bl=boardsOf(S.b);
+    if(!bl.some(x=>x.f===S.f))S.f=(bl.find(x=>x.f===LS.get("odb.rz."+S.b,""))||bl[0]||{f:S.f}).f;
+    if(String(S.f).startsWith("x_"))LS.set("odb.rz."+S.b,S.f);view=null}
+  else{if(wasRz)view=null;
+    if(!floorsOf(S.b).some(z=>z.id===S.f)){const lf=LS.get("odb.f."+S.b,"");S.f=floorsOf(S.b).some(z=>z.id===lf)?lf:floorsOf(S.b)[0].id}}
   if(S.l==="od"){const _f=floorsOf(S.b);S.f=_f[_f.length-1].id}
   S.undo=[];updUndo();S.moving=null;
   subMarks();renderAll();loadSheet(view);
 }
-document.querySelectorAll("#layerSeg button").forEach(x=>x.onclick=()=>{const l=x.dataset.l;if(l===S.l)return;if(l==="od"){const fl=floorsOf(S.b);go({l,f:fl[fl.length-1].id})}else go({l})});
+document.querySelectorAll("#layerSeg button").forEach(x=>x.onclick=()=>{const l=x.dataset.l;if(l===S.l)return;if(l==="rz"){go({l})}else if(l==="od"){const fl=floorsOf(S.b);go({l,f:fl[fl.length-1].id})}else go({l})});
 function subMarks(){
   const key=S.b+"|"+S.f;if(key===S.marksKey)return;
   if(S.unsubM)S.unsubM();S.marksKey=key;S.marks={};
@@ -568,7 +590,7 @@ async function loadSheet(view){
     const page=await c.doc.getPage(Math.min(sh.page||1,c.doc.numPages));if(seq!==S.loadSeq)return;
     S.pageObj=page;S.vpBase=page.getViewport({scale:1});S.dims=S.dims||{};S.dims[sid]={w:S.vpBase.width,h:S.vpBase.height};
     S.curKey=sh.assetId||("local:"+sid);
-    S.zoom=view?zoomForView(view):fitZoom();layoutStage();applyView(view);renderMarks();
+    S.zoom=view?zoomForView(view):(S.l==="rz"?1:fitZoom());layoutStage();applyView(view);renderMarks();
     $("busy").hidden=true;
     const bk=bmpKey();const hit=S.bmpCache&&S.bmpCache.get(bk);
     if(hit){const cv=$("cv");cv.width=hit.width;cv.height=hit.height;cv.getContext("2d").drawImage(hit,0,0);S.bmpScale=hit.__scale;scheduleTile();prefetchSoon()}
@@ -579,7 +601,7 @@ function showEmpty(){
   const em=$("empty");em.hidden=false;
   const others=uniqueFiles();
   em.innerHTML='<div class="empty-card"><div class="where">'+esc(where())+'</div>'+
-    '<h1>Brak planu '+({sw:"oświetlenia",tk:"tras kablowych",od:"instalacji odgromowej (dach – ostatnie piętro)"}[S.l]||"gniazd")+' dla tego piętra</h1>'+(S.l==="z"?'<p>Plan Z korzysta z rysunku gniazd. Wgraj plan gniazd, a pojawi się w obu miejscach.</p>':'')+
+    '<h1>Brak planu '+({sw:"oświetlenia",tk:"tras kablowych",od:"instalacji odgromowej (dach – ostatnie piętro)",rz:"schematu rozdzielnic"}[S.l]||"gniazd")+(S.l==="rz"?' w tym budynku</h1>':' dla tego piętra</h1>')+(S.l==="z"?'<p>Plan Z korzysta z rysunku gniazd. Wgraj plan gniazd, a pojawi się w obu miejscach.</p>':'')+
     '<p>Wgraj PDF z tym rzutem. Jeśli jeden plik ma kilka pięter na osobnych stronach, wybierzesz właściwą stronę.</p>'+
     '<button class="primary" id="emUp">Wgraj PDF</button>'+
     (others.length?'<button class="ghost" id="emReuse">Użyj pliku, który już jest wgrany</button>':'')+
@@ -703,7 +725,7 @@ $("stage").addEventListener("click",async e=>{
   if(kind==="done")toast("Zaznaczono jako zrobione");
   else if(kind==="uwaga")openMark(id);
   else if(EXTRA_KINDS.has(kind)&&S.l==="el"&&await autoLayer(id,m)){}
-  else if(EXTRA_KINDS.has(kind)&&S.l!=="z")toast(KINDS[kind].label+({el:" na Gniazdach",sw:" na Oświetleniu",tk:" na Trasach kablowych",od:" na instalacji odgromowej"}[S.l]||"")+" – przy elemencie z projektu","Brak na planie → Z",()=>moveToZ(id,true),6000);
+  else if(EXTRA_KINDS.has(kind)&&S.l!=="z")toast(KINDS[kind].label+({el:" na Gniazdach",sw:" na Oświetleniu",tk:" na Trasach kablowych",od:" na instalacji odgromowej",rz:" na schemacie rozdzielnicy"}[S.l]||"")+" – przy elemencie z projektu","Brak na planie → Z",()=>moveToZ(id,true),6000);
   else if(kind==="peszel")toast("Peszel dodany – stuknij go, by podać ilość","Ile?",()=>openMark(id),4500);
   else toast(KINDS[kind].label+" dodany","Opis / zdjęcie",()=>openMark(id),4500);
 });
@@ -1635,7 +1657,7 @@ window.addEventListener("resize",()=>{clearTimeout(window.__rz);window.__rz=setT
 function startWith(store){
   S.store=store;let gotC=false,gotS=false,booted=false;
   const boot=()=>{if(booted||!gotC||!gotS)return;booted=true;go({b:S.b,f:LS.get("odb.f."+S.b,floorsOf(S.b)[0].id),l:S.l})};
-  store.onConfig(fl=>{S.floors=fl;gotC=true;if(booted){if(!floorsOf(S.b).some(z=>z.id===S.f))go({f:floorsOf(S.b)[0].id});else renderFloors()}boot()});
+  store.onConfig(fl=>{S.floors=fl;gotC=true;if(booted){if(S.l!=="rz"&&!floorsOf(S.b).some(z=>z.id===S.f))go({f:floorsOf(S.b)[0].id});else renderFloors()}boot()});
   store.onSheets(sh=>{const prev=S.sheets[curSheetId()];S.sheets=sh;gotS=true;
     if(booted){renderLayers();const now=sh[curSheetId()];
       if(JSON.stringify(prev&&[prev.assetId,prev.page,prev.fingerprint])!==JSON.stringify(now&&[now.assetId,now.page,now.fingerprint]))loadSheet()}
